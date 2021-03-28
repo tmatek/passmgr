@@ -147,7 +147,7 @@ int main(int argc, char **argv) {
 
     db = popen(command, "w");
     if (!db) {
-      fprintf(stderr, "Unable to run OpenSSL.\n");
+      fprintf(stderr, "Unable to create initial database file.\n");
       return EXIT_FAILURE;
     }
 
