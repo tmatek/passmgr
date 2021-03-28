@@ -18,6 +18,7 @@
 typedef struct pwd_entry {
   char key[MAX_KEY_LENGTH];
   char password[MAX_PWD_LENGTH];
+  bool to_remove;
 } pwd_entry;
 
 void print_help() {
@@ -33,6 +34,7 @@ void print_help() {
   printf("  options:\n");
   printf("    -c  create a new password entry in the database, overwriting "
          "existing entry.\n");
+  printf("    -d  remove an existing entry from the database.\n");
 }
 
 int read_passwords(FILE *db, pwd_entry *entries) {
@@ -96,16 +98,21 @@ bool valid_identifier(char *identifier) {
 int main(int argc, char **argv) {
   char opt;
   bool create_update = false;
+  bool delete = false;
 
-  while ((opt = getopt(argc, argv, ":c")) != -1) {
+  while ((opt = getopt(argc, argv, ":cd")) != -1) {
     switch (opt) {
     case 'c':
       create_update = true;
       break;
+
+    case 'd':
+      delete = true;
+      break;
     }
   }
 
-  if (optind >= argc) {
+  if (optind >= argc || (create_update && delete)) {
     print_help();
     return EXIT_FAILURE;
   }
@@ -222,6 +229,11 @@ int main(int argc, char **argv) {
           master_pwd);
   db = popen(command, "w");
   for (int i = 0; i < num_entries; i++) {
+    // skip entry?
+    if (delete &&(&entries[i] == matching_entry)) {
+      continue;
+    }
+
     fprintf(db, "%s%s%s\n", entries[i].key, KEY_PWD_DELIMITER,
             entries[i].password);
   }
@@ -229,16 +241,20 @@ int main(int argc, char **argv) {
   pclose(db);
 
   // copy password to clipboard
-  FILE *cpy = popen("pbcopy", "w");
-  if (!cpy) {
-    fprintf(stderr, "Unable to copy password to your clipboard.\n");
-    return EXIT_FAILURE;
+  if (!delete) {
+    FILE *cpy = popen("pbcopy", "w");
+    if (!cpy) {
+      fprintf(stderr, "Unable to copy password to your clipboard.\n");
+      return EXIT_FAILURE;
+    }
+
+    fprintf(cpy, "%s", matching_entry->password);
+    pclose(cpy);
+
+    printf("Password copied to clipboard.\n");
+  } else {
+    printf("Password removed from database.\n");
   }
-
-  fprintf(cpy, "%s", matching_entry->password);
-  pclose(cpy);
-
-  printf("Password copied to clipboard.\n");
 
   return EXIT_SUCCESS;
 }
