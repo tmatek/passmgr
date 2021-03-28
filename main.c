@@ -36,7 +36,8 @@ int read_passwords(FILE *db, pwd_entry *entries) {
   char line[MAX_LINE_LENGTH];
   int count = 0;
 
-  while (fgets(line, MAX_LINE_LENGTH, db) != NULL) {
+  while (fgets(line, 1024, db) != NULL) {
+    strtok(line, "\n"); // remove trailing new line
     char *identifier = strtok(line, "=");
 
     pwd_entry entry;
@@ -62,7 +63,9 @@ bool generate_random_password(pwd_entry *entry) {
     return false;
   }
 
-  char *res = fgets(entry->password, MAX_PWD_LENGTH, gen);
+  // read until new line is consumed and then remove the new line
+  char *res = fgets(entry->password, 1024, gen);
+  strtok(entry->password, "\n");
   pclose(gen);
 
   return !!res;
