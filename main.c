@@ -7,7 +7,7 @@
 
 #define MAX_PWD_ENTRIES 1000
 #define MAX_KEY_LENGTH 100
-#define MAX_PWD_LENGTH 30
+#define MAX_PWD_LENGTH 20
 
 // should not clash with base64 characters
 #define KEY_PWD_DELIMITER "|"
@@ -63,7 +63,7 @@ int read_passwords(FILE *db, pwd_entry *entries) {
 }
 
 bool generate_random_password(pwd_entry *entry) {
-  FILE *gen = popen("openssl rand -base64 20", "r");
+  FILE *gen = popen("openssl rand -base64 15", "r");
   if (!gen) {
     return false;
   }
