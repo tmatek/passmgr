@@ -74,9 +74,25 @@ bool generate_random_password(pwd_entry *entry) {
   return !!res;
 }
 
-/**
- * TODO: validate that key is only alphanumeric, with an underscore or a dash.
- */
+bool valid_identifier(char *identifier) {
+  for (char *ptr = identifier; *ptr != '\0'; ptr++) {
+    if (*ptr >= 48 && *ptr <= 57)
+      continue; // digits
+    if (*ptr >= 65 && *ptr <= 90)
+      continue; // large letters
+    if (*ptr >= 97 && *ptr <= 122)
+      continue; // small letters
+    if (*ptr == 95)
+      continue; // underscore
+    if (*ptr == 45)
+      continue; // dash
+
+    return false;
+  }
+
+  return true;
+}
+
 int main(int argc, char **argv) {
   char opt;
   bool create_update = false;
@@ -95,6 +111,12 @@ int main(int argc, char **argv) {
   }
 
   char *identifier = argv[optind];
+  if (!valid_identifier(identifier)) {
+    fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
+                    "and/or a dash.\n");
+    return EXIT_FAILURE;
+  }
+
   char master_pwd[256] = {'\0'};
 
   /**
