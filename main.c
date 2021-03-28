@@ -7,7 +7,7 @@
 
 #define MAX_PWD_ENTRIES 1000
 #define MAX_KEY_LENGTH 100
-#define MAX_PWD_LENGTH 20
+#define MAX_PWD_LENGTH 30
 
 // should not clash with base64 characters
 #define KEY_PWD_DELIMITER "|"
