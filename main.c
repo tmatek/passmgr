@@ -9,7 +9,10 @@
 #define MAX_KEY_LENGTH 100
 #define MAX_PWD_LENGTH 30
 
-// max length of key + length of password + equals sign
+// should not clash with base64 characters
+#define KEY_PWD_DELIMITER "|"
+
+// max length of key + length of password + delimiter sign
 #define MAX_LINE_LENGTH (MAX_KEY_LENGTH + MAX_PWD_LENGTH + 1)
 
 typedef struct pwd_entry {
@@ -38,12 +41,12 @@ int read_passwords(FILE *db, pwd_entry *entries) {
 
   while (fgets(line, 1024, db) != NULL) {
     strtok(line, "\n"); // remove trailing new line
-    char *identifier = strtok(line, "=");
+    char *identifier = strtok(line, KEY_PWD_DELIMITER);
 
     pwd_entry entry;
     memcpy(entry.key, identifier, MAX_KEY_LENGTH);
 
-    char *pwd = strtok(NULL, "=");
+    char *pwd = strtok(NULL, KEY_PWD_DELIMITER);
     if (!pwd) {
       // broken line
       continue;
@@ -71,6 +74,9 @@ bool generate_random_password(pwd_entry *entry) {
   return !!res;
 }
 
+/**
+ * TODO: validate that key is only alphanumeric, with an underscore or a dash.
+ */
 int main(int argc, char **argv) {
   char opt;
   bool create_update = false;
@@ -194,7 +200,8 @@ int main(int argc, char **argv) {
           master_pwd);
   db = popen(command, "w");
   for (int i = 0; i < num_entries; i++) {
-    fprintf(db, "%s=%s\n", entries[i].key, entries[i].password);
+    fprintf(db, "%s%s%s\n", entries[i].key, KEY_PWD_DELIMITER,
+            entries[i].password);
   }
 
   pclose(db);
