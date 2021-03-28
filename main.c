@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
     if (create_update) {
       char ok;
       printf("Overwrite existing password in the database? (Y/N): ");
-      scanf(" %c", &ok);
+      scanf("%c", &ok);
 
       if (ok == 'Y' || ok == 'y') {
         pwd_updated = generate_random_password(&entries[i]);
