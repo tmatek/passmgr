@@ -18,6 +18,7 @@
 typedef struct pwd_entry {
   char key[MAX_KEY_LENGTH];
   char password[MAX_PWD_LENGTH];
+  bool to_remove;
 } pwd_entry;
 
 void print_help() {
@@ -95,43 +96,84 @@ bool valid_identifier(char *identifier) {
   return true;
 }
 
-int main(int argc, char **argv) {
-  char opt;
-  bool create_update = false;
-  bool delete = false;
-  bool list = false;
+bool create_database(char *master_pwd) {
+  char *pass = getpass("Master password: ");
+  strcpy(master_pwd, pass);
 
-  while ((opt = getopt(argc, argv, ":cdl")) != -1) {
-    switch (opt) {
-    case 'c':
-      create_update = true;
-      break;
+  // wait for matching password
+  while (strcmp(master_pwd, getpass("Repeat password: ")) != 0)
+    ;
 
-    case 'd':
-      delete = true;
-      break;
+  // no database, use OpenSSL to create initial database
+  char command[350];
+  sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
+          master_pwd);
 
-    case 'l':
-      list = true;
-      break;
+  FILE *db = popen(command, "w");
+  if (!db) {
+    fprintf(stderr, "Unable to create initial database file.\n");
+    return false;
+  }
+
+  pclose(db);
+  return true;
+}
+
+bool read_database(char *master_pwd, pwd_entry *entries, int *num_entries) {
+  char command[350];
+  sprintf(command, "openssl enc -aes-256-cbc -d -in passdb -pass pass:%s",
+          master_pwd);
+  FILE *db = popen(command, "r");
+  if (!db) {
+    return false;
+  }
+
+  *num_entries = read_passwords(db, entries);
+
+  // master password checks out?
+  int res = pclose(db);
+  if (res) {
+    return false;
+  }
+
+  return true;
+}
+
+bool save_database(char *master_pwd, pwd_entry *entries, int num_entries) {
+  char command[350];
+  sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
+          master_pwd);
+  FILE *db = popen(command, "w");
+  if (!db) {
+    return false;
+  }
+
+  for (int i = 0; i < num_entries; i++) {
+    // skip entry?
+    if (entries[i].to_remove) {
+      continue;
     }
+
+    fprintf(db, "%s%s%s\n", entries[i].key, KEY_PWD_DELIMITER,
+            entries[i].password);
   }
 
-  if (optind >= argc && create_update) {
-    print_help();
-    return EXIT_FAILURE;
+  pclose(db);
+  return true;
+}
+
+bool clipboard_copy(char *password) {
+  FILE *cpy = popen("pbcopy", "w");
+  if (!cpy) {
+    return false;
   }
 
-  if (optind >= argc && delete) {
-    print_help();
-    return EXIT_FAILURE;
-  }
+  fprintf(cpy, "%s", password);
+  pclose(cpy);
+  return true;
+}
 
-  if ((create_update && delete) || (create_update && list) || (delete &&list)) {
-    print_help();
-    return EXIT_FAILURE;
-  }
-
+int main(int argc, char **argv) {
   char master_pwd[256] = {'\0'};
 
   /**
@@ -140,29 +182,11 @@ int main(int argc, char **argv) {
   FILE *db = fopen("./passdb", "r");
   if (!db) {
     printf("No database found, creating one now.\n");
-
-    char *pass = getpass("Master password: ");
-    strcpy(master_pwd, pass);
-
-    // wait for matching password
-    while (strcmp(master_pwd, getpass("Repeat password: ")) != 0)
-      ;
-
-    // no database, use OpenSSL to create initial database
-    char command[350];
-    sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
-            master_pwd);
-
-    db = popen(command, "w");
-    if (!db) {
+    bool db_ok = create_database(master_pwd);
+    if (!db_ok) {
       fprintf(stderr, "Unable to create initial database file.\n");
       return EXIT_FAILURE;
     }
-
-    pclose(db);
-
-    printf("Database created, you may now generate passwords.\n");
-    return EXIT_SUCCESS;
   } else {
     fclose(db);
 
@@ -173,116 +197,129 @@ int main(int argc, char **argv) {
   /**
    * The database is there, so decrypt it first.
    */
-  char command[350];
-  sprintf(command, "openssl enc -aes-256-cbc -d -in passdb -pass pass:%s",
-          master_pwd);
-  db = popen(command, "r");
-  if (!db) {
+  pwd_entry entries[MAX_PWD_ENTRIES];
+  int num_entries;
+
+  bool read_ok = read_database(master_pwd, entries, &num_entries);
+  if (!read_ok) {
     fprintf(stderr, "Unable to read database file.\n");
     return EXIT_FAILURE;
   }
 
-  pwd_entry entries[MAX_PWD_ENTRIES];
-  pwd_entry *matching_entry = NULL;
-  int num_entries = read_passwords(db, entries);
+  // read options and process
+  char opt;
+  while ((opt = getopt(argc, argv, "c:d:l")) != -1) {
+    switch (opt) {
+    case 'c':
+    case 'd': {
+      if (!valid_identifier(optarg)) {
+        fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
+                        "and/or a dash.\n");
+        return EXIT_FAILURE;
+      }
 
-  // master password checks out?
-  int res = pclose(db);
-  if (res) {
-    return res;
-  }
+      bool pwd_updated = false;
+      pwd_entry *entry = NULL;
 
-  if (list) {
-    for (int i = 0; i < num_entries; i++) {
-      printf("%s\n", entries[i].key);
-    }
+      for (int i = 0; i < num_entries; i++) {
+        if (strcmp(optarg, entries[i].key) != 0) {
+          continue;
+        }
 
-    return EXIT_SUCCESS;
-  }
+        entry = &entries[i];
 
-  char *identifier = argv[optind];
-  if (!valid_identifier(identifier)) {
-    fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
-                    "and/or a dash.\n");
-    return EXIT_FAILURE;
-  }
+        if (opt == 'd') {
+          entries[i].to_remove = true;
+        }
 
-  bool pwd_updated = false;
-  for (int i = 0; i < num_entries; i++) {
-    if (strcmp(identifier, entries[i].key) != 0) {
-      continue;
-    }
+        if (opt == 'c') {
+          char ok;
+          printf("Overwrite existing password in the database? (Y/N): ");
+          scanf("%c", &ok);
 
-    matching_entry = &entries[i];
+          if (ok == 'Y' || ok == 'y') {
+            pwd_updated = generate_random_password(&entries[i]);
+            if (!pwd_updated) {
+              fprintf(stderr, "Unable to generate a new password.\n");
+              return EXIT_FAILURE;
+            }
+          } else {
+            return EXIT_SUCCESS;
+          }
+        }
+      }
 
-    if (create_update) {
-      char ok;
-      printf("Overwrite existing password in the database? (Y/N): ");
-      scanf("%c", &ok);
+      // create a brand new entry?
+      if (opt == 'c' && !pwd_updated) {
+        pwd_entry new_entry;
+        memcpy(new_entry.key, optarg, MAX_KEY_LENGTH);
 
-      if (ok == 'Y' || ok == 'y') {
-        pwd_updated = generate_random_password(&entries[i]);
-        if (!pwd_updated) {
+        if (!generate_random_password(&new_entry)) {
           fprintf(stderr, "Unable to generate a new password.\n");
           return EXIT_FAILURE;
         }
-      } else {
-        return EXIT_SUCCESS;
+
+        entries[num_entries++] = new_entry;
+        entry = &new_entry;
       }
+
+      // save the database by re-writing all entries
+      bool save_ok = save_database(master_pwd, entries, num_entries);
+      if (!save_ok) {
+        fprintf(stderr, "Unable to save database file.\n");
+        return EXIT_FAILURE;
+      }
+
+      if (opt == 'c') {
+        bool copy_ok = clipboard_copy(entry->password);
+        if (!copy_ok) {
+          fprintf(stderr, "Unable to copy password to your clipboard.\n");
+          return EXIT_FAILURE;
+        }
+
+        printf("Password copied to clipboard.\n");
+      }
+
+      if (opt == 'd') {
+        printf("Password removed from database.\n");
+      }
+
+      return EXIT_SUCCESS;
+    }
+
+    case 'l':
+      for (int i = 0; i < num_entries; i++) {
+        printf("%s\n", entries[i].key);
+      }
+      return EXIT_SUCCESS;
+
+    case ':':
+    case '?':
+      print_help();
+      return EXIT_FAILURE;
+    }
+  }
+
+  if (argc < 2) {
+    print_help();
+    return EXIT_FAILURE;
+  }
+
+  // get single entry
+  for (int i = 0; i < num_entries; i++) {
+    if (strcmp(argv[1], entries[i].key) == 0) {
+      bool copy_ok = clipboard_copy(entries[i].password);
+      if (!copy_ok) {
+        fprintf(stderr, "Unable to copy password to your clipboard.\n");
+        return EXIT_FAILURE;
+      }
+
+      printf("Password copied to clipboard.\n");
+      return EXIT_SUCCESS;
     }
   }
 
   // no entries found?
-  if (!create_update && !matching_entry) {
-    printf("No entry found for key \"%s\".\n", identifier);
-    return EXIT_SUCCESS;
-  }
-
-  // create a brand new entry?
-  if (create_update && !pwd_updated) {
-    pwd_entry new_entry;
-    memcpy(new_entry.key, identifier, MAX_KEY_LENGTH);
-
-    if (!generate_random_password(&new_entry)) {
-      fprintf(stderr, "Unable to generate a new password.\n");
-      return EXIT_FAILURE;
-    }
-
-    matching_entry = &new_entry;
-    entries[num_entries++] = new_entry;
-  }
-
-  // save the database by re-writing all entries
-  sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
-          master_pwd);
-  db = popen(command, "w");
-  for (int i = 0; i < num_entries; i++) {
-    // skip entry?
-    if (delete &&(&entries[i] == matching_entry)) {
-      continue;
-    }
-
-    fprintf(db, "%s%s%s\n", entries[i].key, KEY_PWD_DELIMITER,
-            entries[i].password);
-  }
-
-  pclose(db);
-
-  // copy password to clipboard
-  if (!delete) {
-    FILE *cpy = popen("pbcopy", "w");
-    if (!cpy) {
-      fprintf(stderr, "Unable to copy password to your clipboard.\n");
-      return EXIT_FAILURE;
-    }
-
-    fprintf(cpy, "%s", matching_entry->password);
-    pclose(cpy);
-
-    printf("Password copied to clipboard.\n");
-  } else {
-    printf("Password removed from database.\n");
-  }
-
+  printf("No entry found for key \"%s\".\n", argv[1]);
   return EXIT_SUCCESS;
 }
