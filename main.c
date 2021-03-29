@@ -18,7 +18,6 @@
 typedef struct pwd_entry {
   char key[MAX_KEY_LENGTH];
   char password[MAX_PWD_LENGTH];
-  bool to_remove;
 } pwd_entry;
 
 void print_help() {
