@@ -177,7 +177,12 @@ int main(int argc, char **argv) {
   pwd_entry entries[MAX_PWD_ENTRIES];
   pwd_entry *matching_entry = NULL;
   int num_entries = read_passwords(db, entries);
-  pclose(db);
+
+  // master password checks out?
+  int res = pclose(db);
+  if (res) {
+    return res;
+  }
 
   bool pwd_updated = false;
   for (int i = 0; i < num_entries; i++) {
