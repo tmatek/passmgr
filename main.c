@@ -31,6 +31,7 @@ void print_help() {
   printf("  If the database has not yet been created, you will be asked for a "
          "master password to create the database.\n");
   printf("  options:\n");
+  printf("    -l  list all entires in the database.\n");
   printf("    -c  create a new password entry in the database, overwriting "
          "existing entry.\n");
   printf("    -d  remove an existing entry from the database.\n");
@@ -98,8 +99,9 @@ int main(int argc, char **argv) {
   char opt;
   bool create_update = false;
   bool delete = false;
+  bool list = false;
 
-  while ((opt = getopt(argc, argv, ":cd")) != -1) {
+  while ((opt = getopt(argc, argv, ":cdl")) != -1) {
     switch (opt) {
     case 'c':
       create_update = true;
@@ -108,18 +110,25 @@ int main(int argc, char **argv) {
     case 'd':
       delete = true;
       break;
+
+    case 'l':
+      list = true;
+      break;
     }
   }
 
-  if (optind >= argc || (create_update && delete)) {
+  if (optind >= argc && create_update) {
     print_help();
     return EXIT_FAILURE;
   }
 
-  char *identifier = argv[optind];
-  if (!valid_identifier(identifier)) {
-    fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
-                    "and/or a dash.\n");
+  if (optind >= argc && delete) {
+    print_help();
+    return EXIT_FAILURE;
+  }
+
+  if ((create_update && delete) || (create_update && list) || (delete &&list)) {
+    print_help();
     return EXIT_FAILURE;
   }
 
@@ -181,6 +190,21 @@ int main(int argc, char **argv) {
   int res = pclose(db);
   if (res) {
     return res;
+  }
+
+  if (list) {
+    for (int i = 0; i < num_entries; i++) {
+      printf("%s\n", entries[i].key);
+    }
+
+    return EXIT_SUCCESS;
+  }
+
+  char *identifier = argv[optind];
+  if (!valid_identifier(identifier)) {
+    fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
+                    "and/or a dash.\n");
+    return EXIT_FAILURE;
   }
 
   bool pwd_updated = false;
