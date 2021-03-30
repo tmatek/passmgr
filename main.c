@@ -57,6 +57,7 @@ int read_passwords(FILE *db, pwd_entry *entries) {
 
     memcpy(entry.password, pwd, MAX_PWD_LENGTH);
 
+    entry.to_remove = false;
     entries[count++] = entry;
   }
 
@@ -281,7 +282,11 @@ int main(int argc, char **argv) {
       }
 
       if (opt == 'd') {
-        printf("Password removed from database.\n");
+        if (entry) {
+          printf("Password removed from database.\n");
+        } else {
+          printf("No entry found for key \"%s\".\n", optarg);
+        }
       }
 
       return EXIT_SUCCESS;
