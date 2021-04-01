@@ -255,15 +255,25 @@ void run_master_password_daemon() {
     exit(EXIT_FAILURE);
   }
 
-  int start = (int)time(NULL);
+  bool prev_available = cache->password_available;
+  int start = prev_available ? (int)time(NULL) : 0;
+
   while (true) {
     sleep(1);
+
+    // password was set? start the timer
+    if (cache->password_available && !prev_available) {
+      start = (int)time(NULL);
+    }
+
     int now = (int)time(NULL);
-    if (now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
-      start = now;
+    if (start > 0 && now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
+      start = 0;
       cache->password_available = false;
       memset(cache->master_password, 0, MASTER_PWD_MAX_LENGTH);
     }
+
+    prev_available = cache->password_available;
   }
 
   shmdt(cache);
