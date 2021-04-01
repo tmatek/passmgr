@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -97,7 +98,7 @@ bool valid_identifier(char *identifier) {
   return true;
 }
 
-bool create_database(char *master_pwd) {
+bool create_database(char *db_path, char *master_pwd) {
   char *pass = getpass("Master password: ");
   strcpy(master_pwd, pass);
 
@@ -106,9 +107,9 @@ bool create_database(char *master_pwd) {
     ;
 
   // no database, use OpenSSL to create initial database
-  char command[350];
-  sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
-          master_pwd);
+  char *format = "openssl enc -aes-256-cbc -out %s -pass pass:%s";
+  char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
+  sprintf(command, format, db_path, master_pwd);
 
   FILE *db = popen(command, "w");
   if (!db) {
@@ -120,10 +121,11 @@ bool create_database(char *master_pwd) {
   return true;
 }
 
-bool read_database(char *master_pwd, pwd_entry *entries, int *num_entries) {
-  char command[350];
-  sprintf(command, "openssl enc -aes-256-cbc -d -in passdb -pass pass:%s",
-          master_pwd);
+bool read_database(char *db_path, char *master_pwd, pwd_entry *entries,
+                   int *num_entries) {
+  char *format = "openssl enc -aes-256-cbc -d -in %s -pass pass:%s";
+  char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
+  sprintf(command, format, db_path, master_pwd);
   FILE *db = popen(command, "r");
   if (!db) {
     return false;
@@ -140,10 +142,11 @@ bool read_database(char *master_pwd, pwd_entry *entries, int *num_entries) {
   return true;
 }
 
-bool save_database(char *master_pwd, pwd_entry *entries, int num_entries) {
-  char command[350];
-  sprintf(command, "openssl enc -aes-256-cbc -out passdb -pass pass:%s",
-          master_pwd);
+bool save_database(char *db_path, char *master_pwd, pwd_entry *entries,
+                   int num_entries) {
+  char *format = "openssl enc -aes-256-cbc -out %s -pass pass:%s";
+  char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
+  sprintf(command, format, db_path, master_pwd);
   FILE *db = popen(command, "w");
   if (!db) {
     return false;
@@ -175,17 +178,33 @@ bool clipboard_copy(char *password) {
 }
 
 int main(int argc, char **argv) {
+  char db_path[PATH_MAX];
+
+// user users home directory for release builds and the current working
+// directory for debug builds
+#ifndef NDEBUG
+  sprintf(db_path, "./passdb");
+#else
+  char *homedir = getenv("HOME");
+  if (!homedir) {
+    perror("Unable to find user's home directory.\n");
+    return EXIT_FAILURE;
+  }
+
+  sprintf(db_path, "%s/passdb", homedir);
+#endif
+
   char master_pwd[256] = {'\0'};
 
   /**
    * Check if database has been created.
    */
-  FILE *db = fopen("./passdb", "r");
+  FILE *db = fopen(db_path, "r");
   if (!db) {
     printf("No database found, creating one now.\n");
-    bool db_ok = create_database(master_pwd);
+    bool db_ok = create_database(db_path, master_pwd);
     if (!db_ok) {
-      fprintf(stderr, "Unable to create initial database file.\n");
+      perror("Unable to create initial database file.\n");
       return EXIT_FAILURE;
     }
   } else {
@@ -201,9 +220,9 @@ int main(int argc, char **argv) {
   pwd_entry entries[MAX_PWD_ENTRIES];
   int num_entries;
 
-  bool read_ok = read_database(master_pwd, entries, &num_entries);
+  bool read_ok = read_database(db_path, master_pwd, entries, &num_entries);
   if (!read_ok) {
-    fprintf(stderr, "Unable to read database file.\n");
+    perror("Unable to read database file.\n");
     return EXIT_FAILURE;
   }
 
@@ -214,8 +233,8 @@ int main(int argc, char **argv) {
     case 'c':
     case 'd': {
       if (!valid_identifier(optarg)) {
-        fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
-                        "and/or a dash.\n");
+        perror("Identifier can only be alphanumeric, with underscore "
+               "and/or a dash.\n");
         return EXIT_FAILURE;
       }
 
@@ -241,7 +260,7 @@ int main(int argc, char **argv) {
           if (ok == 'Y' || ok == 'y') {
             pwd_updated = generate_random_password(&entries[i]);
             if (!pwd_updated) {
-              fprintf(stderr, "Unable to generate a new password.\n");
+              perror("Unable to generate a new password.\n");
               return EXIT_FAILURE;
             }
           } else {
@@ -256,7 +275,7 @@ int main(int argc, char **argv) {
         memcpy(new_entry.key, optarg, MAX_KEY_LENGTH);
 
         if (!generate_random_password(&new_entry)) {
-          fprintf(stderr, "Unable to generate a new password.\n");
+          perror("Unable to generate a new password.\n");
           return EXIT_FAILURE;
         }
 
@@ -265,16 +284,16 @@ int main(int argc, char **argv) {
       }
 
       // save the database by re-writing all entries
-      bool save_ok = save_database(master_pwd, entries, num_entries);
+      bool save_ok = save_database(db_path, master_pwd, entries, num_entries);
       if (!save_ok) {
-        fprintf(stderr, "Unable to save database file.\n");
+        perror("Unable to save database file.\n");
         return EXIT_FAILURE;
       }
 
       if (opt == 'c') {
         bool copy_ok = clipboard_copy(entry->password);
         if (!copy_ok) {
-          fprintf(stderr, "Unable to copy password to your clipboard.\n");
+          perror("Unable to copy password to your clipboard.\n");
           return EXIT_FAILURE;
         }
 
@@ -315,7 +334,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[1], entries[i].key) == 0) {
       bool copy_ok = clipboard_copy(entries[i].password);
       if (!copy_ok) {
-        fprintf(stderr, "Unable to copy password to your clipboard.\n");
+        perror("Unable to copy password to your clipboard.\n");
         return EXIT_FAILURE;
       }
 
