@@ -119,7 +119,8 @@ bool create_database(char *db_path, char *master_pwd) {
     ;
 
   // no database, use OpenSSL to create initial database
-  char *format = "openssl enc -aes-256-cbc -out %s -pass pass:%s";
+  char *format =
+      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s";
   char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
   sprintf(command, format, db_path, master_pwd);
 
@@ -135,7 +136,8 @@ bool create_database(char *db_path, char *master_pwd) {
 
 bool read_database(char *db_path, char *master_pwd, pwd_entry *entries,
                    int *num_entries) {
-  char *format = "openssl enc -aes-256-cbc -d -in %s -pass pass:%s";
+  char *format =
+      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -in %s -pass pass:%s";
   char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
   sprintf(command, format, db_path, master_pwd);
   FILE *db = popen(command, "r");
@@ -156,7 +158,8 @@ bool read_database(char *db_path, char *master_pwd, pwd_entry *entries,
 
 bool save_database(char *db_path, char *master_pwd, pwd_entry *entries,
                    int num_entries) {
-  char *format = "openssl enc -aes-256-cbc -out %s -pass pass:%s";
+  char *format =
+      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s";
   char command[PATH_MAX + MAX_PWD_LENGTH + sizeof(format)];
   sprintf(command, format, db_path, master_pwd);
   FILE *db = popen(command, "w");
