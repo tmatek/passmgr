@@ -254,7 +254,7 @@ void run_master_password_daemon() {
 
   int start = (int)time(NULL);
   while (true) {
-    sleep(100);
+    sleep(1);
     int now = (int)time(NULL);
     if (now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
       start = now;
@@ -262,6 +262,8 @@ void run_master_password_daemon() {
       memset(cache->master_password, 0, MASTER_PWD_MAX_LENGTH);
     }
   }
+
+  shmdt(cache);
 }
 
 int main(int argc, char **argv) {
