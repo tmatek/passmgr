@@ -344,8 +344,16 @@ int main(int argc, char **argv) {
   pwd_entry entries[MAX_PWD_ENTRIES];
   int num_entries;
 
+  // temporarily remove master password from cache and restore it after
+  // decryption; this is needed because OpenSSL will force quit on wrong
+  // passphrase, bypassing the code that clears the master password; this means
+  // that if a user makes a mistake, he/she will need to wait the full interval
+  // before trying again.
+  cache->password_available = false;
   bool read_ok =
       read_database(db_path, cache->master_password, entries, &num_entries);
+  cache->password_available = true;
+
   if (!read_ok) {
     fprintf(stderr, "Unable to read database file.\n");
 
