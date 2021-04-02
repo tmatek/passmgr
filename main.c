@@ -39,13 +39,13 @@ void print_help() {
   printf("Store passwords securely in a local file, encrypted with a master "
          "password.\n");
   printf("Remember one password and forget about the rest.\n\n");
-  printf("Usage: pass [options] identifier\n");
+  printf("Usage: pass [options] [identifier]\n");
   printf("  The default action is to copy the password associated with "
          "identifier to your clipboard.\n");
   printf("  If the database has not yet been created, you will be asked for a "
          "master password to create the database.\n");
   printf("  options:\n");
-  printf("    -l  list all entires in the database.\n");
+  printf("    -l  list all entries in the database.\n");
   printf("    -c  create a new password entry in the database, overwriting "
          "existing entry.\n");
   printf("    -d  remove an existing entry from the database.\n");
