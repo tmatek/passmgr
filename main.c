@@ -1,18 +1,15 @@
+#include "ipc.h"
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <time.h>
 #include <unistd.h>
 
+#define MASTER_PWD_MAX_LENGTH 100
 #define MAX_PWD_ENTRIES 1000
 #define MAX_KEY_LENGTH 100
 #define MAX_PWD_LENGTH 30
-#define MASTER_PWD_MAX_LENGTH 100
-#define CLEAR_CACHED_MASTER_PWD_INTERVAL 60
 
 // should not clash with base64 characters
 #define KEY_PWD_DELIMITER "|"
@@ -20,19 +17,11 @@
 // max length of key + length of password + delimiter sign
 #define MAX_LINE_LENGTH (MAX_KEY_LENGTH + MAX_PWD_LENGTH + 1)
 
-#define IPC_RESULT_ERROR (-1)
-
 typedef struct pwd_entry {
   char key[MAX_KEY_LENGTH];
   char password[MAX_PWD_LENGTH];
   bool to_remove;
 } pwd_entry;
-
-typedef struct master_pwd_cache {
-  bool daemon_running;
-  bool password_available;
-  char master_password[MASTER_PWD_MAX_LENGTH];
-} master_pwd_cache;
 
 void print_help() {
   printf("Offline password manager 1.0 (March 28th, 2021).\n\n");
@@ -182,7 +171,12 @@ bool save_database(char *db_path, char *master_pwd, pwd_entry *entries,
 }
 
 bool clipboard_copy(char *password) {
+#ifdef _WIN32
+  FILE *cpy = popen("clip", "w");
+#else
   FILE *cpy = popen("pbcopy", "w");
+#endif
+
   if (!cpy) {
     return false;
   }
@@ -209,74 +203,6 @@ bool get_db_path(char *db_path) {
 #endif
 
   return true;
-}
-
-master_pwd_cache *get_shared_memory(char *filename) {
-  key_t key = ftok(filename, 0);
-  if (key == IPC_RESULT_ERROR) {
-    return NULL;
-  }
-
-  int shared_block_id = shmget(key, sizeof(master_pwd_cache), 0644 | IPC_CREAT);
-  if (shared_block_id == IPC_RESULT_ERROR) {
-    return NULL;
-  }
-
-  master_pwd_cache *result = shmat(shared_block_id, NULL, 0);
-  if (result == (void *)-1) {
-    return false;
-  }
-
-  return result;
-}
-
-/*+
- * The master password daemon runs as a standalone process and caches the
- * correctly entered master password for up to a minute, before clearing it.
- */
-void run_master_password_daemon() {
-  pid_t sid = setsid();
-  if (sid < 0) {
-    exit(EXIT_FAILURE);
-  }
-
-  close(STDIN_FILENO);
-  close(STDOUT_FILENO);
-  close(STDERR_FILENO);
-
-  char db_path[PATH_MAX];
-  bool path_ok = get_db_path(db_path);
-  if (!path_ok) {
-    exit(EXIT_FAILURE);
-  }
-
-  master_pwd_cache *cache = get_shared_memory(db_path);
-  if (!cache) {
-    exit(EXIT_FAILURE);
-  }
-
-  bool prev_available = cache->password_available;
-  int start = prev_available ? (int)time(NULL) : 0;
-
-  while (true) {
-    sleep(1);
-
-    // password was set? start the timer
-    if (cache->password_available && !prev_available) {
-      start = (int)time(NULL);
-    }
-
-    int now = (int)time(NULL);
-    if (start > 0 && now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
-      start = 0;
-      cache->password_available = false;
-      memset(cache->master_password, 0, MASTER_PWD_MAX_LENGTH);
-    }
-
-    prev_available = cache->password_available;
-  }
-
-  shmdt(cache);
 }
 
 int main(int argc, char **argv) {
@@ -314,6 +240,7 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+#ifndef _WIN32
   if (!cache->daemon_running) {
     cache->daemon_running = true;
     pid_t pid = fork();
@@ -322,6 +249,7 @@ int main(int argc, char **argv) {
       return EXIT_SUCCESS;
     }
   }
+#endif
 
   /**
    * Read the password from shared memory if it is there, otherwise ask for it
@@ -349,7 +277,7 @@ int main(int argc, char **argv) {
 
     // read was not ok, clear the master password to try again
     cache->password_available = false;
-    shmdt(cache);
+    detach_shared_memory(cache);
 
     return EXIT_FAILURE;
   }
@@ -366,7 +294,7 @@ int main(int argc, char **argv) {
       if (!valid_identifier(optarg)) {
         fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
                         "and/or a dash.\n");
-        shmdt(cache);
+        detach_shared_memory(cache);
         return EXIT_FAILURE;
       }
 
@@ -393,11 +321,11 @@ int main(int argc, char **argv) {
             pwd_updated = generate_random_password(&entries[i]);
             if (!pwd_updated) {
               fprintf(stderr, "Unable to generate a new password.\n");
-              shmdt(cache);
+              detach_shared_memory(cache);
               return EXIT_FAILURE;
             }
           } else {
-            shmdt(cache);
+            detach_shared_memory(cache);
             return EXIT_SUCCESS;
           }
         }
@@ -410,7 +338,7 @@ int main(int argc, char **argv) {
 
         if (!generate_random_password(&new_entry)) {
           fprintf(stderr, "Unable to generate a new password.\n");
-          shmdt(cache);
+          detach_shared_memory(cache);
           return EXIT_FAILURE;
         }
 
@@ -423,7 +351,7 @@ int main(int argc, char **argv) {
           save_database(db_path, cache->master_password, entries, num_entries);
       if (!save_ok) {
         fprintf(stderr, "Unable to save database file.\n");
-        shmdt(cache);
+        detach_shared_memory(cache);
         return EXIT_FAILURE;
       }
 
@@ -431,7 +359,7 @@ int main(int argc, char **argv) {
         bool copy_ok = clipboard_copy(entry->password);
         if (!copy_ok) {
           fprintf(stderr, "Unable to copy password to your clipboard.\n");
-          shmdt(cache);
+          detach_shared_memory(cache);
           return EXIT_FAILURE;
         }
 
@@ -446,7 +374,7 @@ int main(int argc, char **argv) {
         }
       }
 
-      shmdt(cache);
+      detach_shared_memory(cache);
       return EXIT_SUCCESS;
     }
 
@@ -454,20 +382,20 @@ int main(int argc, char **argv) {
       for (int i = 0; i < num_entries; i++) {
         printf("%s\n", entries[i].key);
       }
-      shmdt(cache);
+      detach_shared_memory(cache);
       return EXIT_SUCCESS;
 
     case ':':
     case '?':
       print_help();
-      shmdt(cache);
+      detach_shared_memory(cache);
       return EXIT_FAILURE;
     }
   }
 
   if (argc < 2) {
     print_help();
-    shmdt(cache);
+    detach_shared_memory(cache);
     return EXIT_FAILURE;
   }
 
@@ -477,18 +405,18 @@ int main(int argc, char **argv) {
       bool copy_ok = clipboard_copy(entries[i].password);
       if (!copy_ok) {
         fprintf(stderr, "Unable to copy password to your clipboard.\n");
-        shmdt(cache);
+        detach_shared_memory(cache);
         return EXIT_FAILURE;
       }
 
       printf("Password copied to clipboard.\n");
-      shmdt(cache);
+      detach_shared_memory(cache);
       return EXIT_SUCCESS;
     }
   }
 
   // no entries found?
   printf("No entry found for key \"%s\".\n", argv[1]);
-  shmdt(cache);
+  detach_shared_memory(cache);
   return EXIT_SUCCESS;
 }
