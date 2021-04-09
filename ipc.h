@@ -9,5 +9,5 @@ typedef struct master_pwd_cache {
 } master_pwd_cache;
 
 master_pwd_cache *get_shared_memory(char *filename);
-void run_master_password_daemon();
+void run_master_password_daemon(char *db_path);
 void detach_shared_memory(master_pwd_cache *cache);

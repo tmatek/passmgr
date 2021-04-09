@@ -245,7 +245,7 @@ int main(int argc, char **argv) {
     cache->daemon_running = true;
     pid_t pid = fork();
     if (pid == 0) {
-      run_master_password_daemon();
+      run_master_password_daemon(db_path);
       return EXIT_SUCCESS;
     }
   }

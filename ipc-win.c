@@ -11,6 +11,6 @@ master_pwd_cache *get_shared_memory(char *filename) {
   return cache;
 }
 
-void run_master_password_daemon() { return; }
+void run_master_password_daemon(char *db_path) { return; }
 
 void detach_shared_memory(master_pwd_cache *cache) { free(cache); }
