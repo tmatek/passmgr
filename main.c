@@ -378,12 +378,27 @@ int main(int argc, char **argv) {
       return EXIT_SUCCESS;
     }
 
-    case 'l':
+    case 'l': {
+      int col_size = num_entries < 10 ? 1 : col_size < 20 ? 2 : 3;
       for (int i = 0; i < num_entries; i++) {
-        printf("%s\n", entries[i].key);
+        if (col_size > 1) {
+          printf("%20s ", entries[i].key);
+        } else {
+          printf("%s", entries[i].key);
+        }
+        
+        if ((i + 1) % col_size == 0) {
+          printf("\n");
+        }
       }
+
+      if (num_entries % col_size != 0) {
+        printf("\n");
+      }
+
       detach_shared_memory(cache);
       return EXIT_SUCCESS;
+    }
 
     case ':':
     case '?':
