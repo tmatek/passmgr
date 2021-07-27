@@ -206,6 +206,11 @@ bool get_db_path(char *db_path) {
 }
 
 int main(int argc, char **argv) {
+  if (argc < 2) {
+    print_help();
+    return EXIT_FAILURE;
+  }
+
   char db_path[PATH_MAX];
   bool path_ok = get_db_path(db_path);
   if (!path_ok) {
@@ -379,14 +384,14 @@ int main(int argc, char **argv) {
     }
 
     case 'l': {
-      int col_size = num_entries < 10 ? 1 : col_size < 20 ? 2 : 3;
+      int col_size = num_entries < 10 ? 1 : num_entries < 20 ? 2 : 3;
       for (int i = 0; i < num_entries; i++) {
         if (col_size > 1) {
           printf("%20s ", entries[i].key);
         } else {
           printf("%s", entries[i].key);
         }
-        
+
         if ((i + 1) % col_size == 0) {
           printf("\n");
         }
@@ -406,12 +411,6 @@ int main(int argc, char **argv) {
       detach_shared_memory(cache);
       return EXIT_FAILURE;
     }
-  }
-
-  if (argc < 2) {
-    print_help();
-    detach_shared_memory(cache);
-    return EXIT_FAILURE;
   }
 
   // get single entry
