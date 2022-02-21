@@ -6,7 +6,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define CLEAR_CACHED_MASTER_PWD_INTERVAL 60
+#define CLEAR_CACHED_MASTER_PWD_INTERVAL 180
 #define IPC_RESULT_ERROR (-1)
 
 master_pwd_cache *get_shared_memory(char *filename) {
