@@ -340,6 +340,7 @@ int main(int argc, char **argv) {
       if (opt == 'c' && !pwd_updated) {
         pwd_entry new_entry;
         memcpy(new_entry.key, optarg, MAX_KEY_LENGTH);
+        new_entry.to_remove = false;
 
         if (!generate_random_password(&new_entry)) {
           fprintf(stderr, "Unable to generate a new password.\n");
