@@ -17,4 +17,4 @@ typedef struct InputArgs {
 InputArgs parse_command_line(int argc, char **argv);
 void print_help();
 
-bool clipboard_copy(char *password);
+bool clipboard_copy(char *string);

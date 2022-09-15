@@ -1,4 +1,5 @@
 #include "cmdline.h"
+#include "database.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -16,6 +17,22 @@ int main(int argc, char **argv) {
     print_help();
     return EXIT_FAILURE;
   }
+
+  if (!database_exists()) {
+    // prompt for master password
+    // create_database()
+  }
+
+  // create_database("test1234");
+
+  // Lines lines;
+  //
+  // int lines_read;
+  // read_database("test1234", lines, &lines_read);
+  //
+  // for (int i = 0; i < lines_read; i++) {
+  //   printf("%s\n", lines[i]);
+  // }
 
   return EXIT_SUCCESS;
 }

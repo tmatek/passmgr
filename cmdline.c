@@ -44,7 +44,7 @@ void print_help() {
   printf("\n");
 }
 
-bool clipboard_copy(char *password) {
+bool clipboard_copy(char *string) {
 #ifdef _WIN32
   FILE *cpy = popen("clip", "w");
 #else
@@ -55,7 +55,7 @@ bool clipboard_copy(char *password) {
     return false;
   }
 
-  fprintf(cpy, "%s", password);
+  fprintf(cpy, "%s", string);
   pclose(cpy);
   return true;
 }
