@@ -1,6 +1,7 @@
 #include "database.h"
 #include <limits.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 /**
@@ -39,7 +40,7 @@ bool database_exists() {
   return true;
 }
 
-DatabaseStatus create_database(char *master_pwd) {
+DBResult create_database(char *master_pwd) {
   char db_path[PATH_MAX];
   bool path_ok = get_db_path(db_path);
 
@@ -48,10 +49,10 @@ DatabaseStatus create_database(char *master_pwd) {
   }
 
   // no database, use OpenSSL to create initial database
-  char *format =
-      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s";
-  char command[PATH_MAX + sizeof(master_pwd) + sizeof(format)];
-  sprintf(command, format, db_path, master_pwd);
+  char command[PATH_MAX];
+  sprintf(command,
+          "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s",
+          db_path, master_pwd);
 
   FILE *db = popen(command, "w");
   if (!db) {
@@ -62,7 +63,7 @@ DatabaseStatus create_database(char *master_pwd) {
   return DB_OK;
 }
 
-DatabaseStatus read_database(char *master_pwd, Lines lines, int *lines_read) {
+DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
   char db_path[PATH_MAX];
   bool path_ok = get_db_path(db_path);
 
@@ -70,10 +71,11 @@ DatabaseStatus read_database(char *master_pwd, Lines lines, int *lines_read) {
     return ERR_DB_HOME_DIR;
   }
 
-  char *format =
-      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -in %s -pass pass:%s";
-  char command[PATH_MAX + sizeof(master_pwd) + sizeof(format)];
-  sprintf(command, format, db_path, master_pwd);
+  char command[PATH_MAX];
+  sprintf(
+      command,
+      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -in %s -pass pass:%s",
+      db_path, master_pwd);
 
   FILE *db = popen(command, "r");
   if (!db) {
@@ -99,7 +101,7 @@ DatabaseStatus read_database(char *master_pwd, Lines lines, int *lines_read) {
   return DB_OK;
 }
 
-DatabaseStatus save_database(char *master_pwd, Lines lines, int num_lines) {
+DBResult save_database(char *master_pwd, Lines lines, int num_lines) {
   char db_path[PATH_MAX];
   bool path_ok = get_db_path(db_path);
 
@@ -107,10 +109,10 @@ DatabaseStatus save_database(char *master_pwd, Lines lines, int num_lines) {
     return ERR_DB_HOME_DIR;
   }
 
-  char *format =
-      "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s";
-  char command[PATH_MAX + sizeof(master_pwd) + sizeof(format)];
-  sprintf(command, format, db_path, master_pwd);
+  char command[PATH_MAX];
+  sprintf(command,
+          "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s",
+          db_path, master_pwd);
 
   FILE *db = popen(command, "w");
   if (!db) {
@@ -123,4 +125,23 @@ DatabaseStatus save_database(char *master_pwd, Lines lines, int num_lines) {
 
   pclose(db);
   return DB_OK;
+}
+
+void handle_database_result(DBResult result) {
+  switch (result) {
+  case ERR_DB_HOME_DIR:
+    fprintf(stderr, "Unable to access your home directory.\n");
+    exit(EXIT_FAILURE);
+
+  case ERR_DB_OPEN_FAILED:
+    fprintf(stderr, "Unable to open database file.\n");
+    exit(EXIT_FAILURE);
+
+  case ERR_DB_MASTER_PWD:
+    fprintf(stderr, "Unable to decrypt database file.\n");
+    exit(EXIT_FAILURE);
+
+  case DB_OK:
+    return;
+  }
 }

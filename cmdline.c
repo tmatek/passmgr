@@ -43,19 +43,3 @@ void print_help() {
          "be copied to your clipboard.\n");
   printf("\n");
 }
-
-bool clipboard_copy(char *string) {
-#ifdef _WIN32
-  FILE *cpy = popen("clip", "w");
-#else
-  FILE *cpy = popen("pbcopy", "w");
-#endif
-
-  if (!cpy) {
-    return false;
-  }
-
-  fprintf(cpy, "%s", string);
-  pclose(cpy);
-  return true;
-}
