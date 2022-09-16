@@ -1,3 +1,5 @@
+#include <stdbool.h>
+
 typedef enum Command {
   CMD_ADD_PASSWD,
   CMD_COPY_PASSWD,
@@ -13,4 +15,5 @@ typedef struct InputArgs {
 } InputArgs;
 
 InputArgs parse_command_line(int argc, char **argv);
+bool ask_override_entry();
 void print_help();

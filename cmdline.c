@@ -29,6 +29,14 @@ InputArgs parse_command_line(int argc, char **argv) {
   return args;
 }
 
+bool ask_override_entry() {
+  char ok;
+  printf("Overwrite existing password in the database? (Y/N): ");
+  scanf("%c", &ok);
+
+  return ok == 'Y' || ok == 'y';
+}
+
 void print_help() {
   printf("usage: pass <command> [identifier]\n\n");
   printf("where command is one of the following:\n");

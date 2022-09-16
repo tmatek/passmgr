@@ -70,6 +70,20 @@ PWDResult clipboard_copy(char *password) {
   return PASSWD_OK;
 }
 
+int find_password_entry(Lines entries, int num_entries, char *identifier) {
+  for (int i = 0; i < num_entries; i++) {
+    Line temp;
+    memcpy(temp, entries[i], sizeof(Line));
+
+    char *current_identifier = strtok(temp, IDENT_PASSWD_DELIMITER);
+    if (strcmp(current_identifier, identifier) == 0) {
+      return i;
+    }
+  }
+
+  return -1;
+}
+
 void handle_password_result(PWDResult result) {
   switch (result) {
   case ERR_IDENTIFIER_INVALID:

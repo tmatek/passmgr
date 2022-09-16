@@ -1,5 +1,7 @@
 #include <stdbool.h>
 
+#include "common.h"
+
 typedef enum PWDResult {
   ERR_IDENTIFIER_INVALID,
   ERR_PASSWD_GENERATION,
@@ -18,4 +20,5 @@ void obtain_master_password(char *master_pwd, bool confirm);
 PWDResult generate_random_password(char *password, int byte_count);
 PWDResult check_password_identifier(char *identifier);
 PWDResult clipboard_copy(char *password);
+int find_password_entry(Lines entries, int num_entries, char *identifier);
 void handle_password_result(PWDResult result);

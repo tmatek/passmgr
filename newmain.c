@@ -46,12 +46,18 @@ int main(int argc, char **argv) {
 
   switch (args.command) {
   case CMD_ADD_PASSWD: {
+    // check for existing entry
+    int entry_idx = find_password_entry(entries, num_entries, args.identifier);
+    if (entry_idx >= 0 && !ask_override_entry()) {
+      return EXIT_SUCCESS;
+    }
+
     char new_password[PASSWD_MAX_LENGTH]; // final password is > 15 chars
     PWDResult gen_res = generate_random_password(new_password, 15);
     handle_password_result(gen_res);
 
-    sprintf(entries[num_entries++], "%s%s%s", args.identifier,
-            IDENT_PASSWD_DELIMITER, new_password);
+    sprintf(entries[entry_idx >= 0 ? entry_idx : num_entries++], "%s%s%s",
+            args.identifier, IDENT_PASSWD_DELIMITER, new_password);
     break;
   }
 
