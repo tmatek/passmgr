@@ -14,7 +14,7 @@ void obtain_master_password(char *master_pwd, bool confirm) {
     ;
 }
 
-PWDResult generate_random_password(char *password, int byte_count) {
+PwdResult generate_random_password(char *password, int byte_count) {
   char command[50];
   sprintf(command, "openssl rand -base64 %d", byte_count);
 
@@ -35,7 +35,7 @@ PWDResult generate_random_password(char *password, int byte_count) {
   return PASSWD_OK;
 }
 
-PWDResult check_password_identifier(char *identifier) {
+PwdResult check_password_identifier(char *identifier) {
   for (char *ptr = identifier; *ptr != '\0'; ptr++) {
     if (*ptr >= 48 && *ptr <= 57)
       continue; // digits
@@ -54,7 +54,7 @@ PWDResult check_password_identifier(char *identifier) {
   return PASSWD_OK;
 }
 
-PWDResult clipboard_copy(char *password) {
+PwdResult clipboard_copy(char *password) {
 #ifdef _WIN32
   FILE *cpy = popen("clip", "w");
 #else
@@ -84,7 +84,7 @@ int find_password_entry(Lines entries, int num_entries, char *identifier) {
   return -1;
 }
 
-void handle_password_result(PWDResult result) {
+void handle_password_result(PwdResult result) {
   switch (result) {
   case ERR_IDENTIFIER_INVALID:
     fprintf(stderr, "Identifier can only be alphanumeric, with underscore "

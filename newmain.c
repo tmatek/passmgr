@@ -14,15 +14,19 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  if (!args.identifier && args.command != CMD_COPY_PASSWD &&
-      args.command != CMD_LIST_PASSWD) {
+  if (args.command == CMD_ADD_PASSWD && !args.identifier) {
+    print_help();
+    return EXIT_FAILURE;
+  }
+
+  if (args.command == CMD_DEL_PASSWD && !args.identifier) {
     print_help();
     return EXIT_FAILURE;
   }
 
   // check if identifier is in correct format
   if (args.identifier) {
-    PWDResult check_res = check_password_identifier(args.identifier);
+    PwdResult check_res = check_password_identifier(args.identifier);
     handle_password_result(check_res);
   }
 
@@ -36,6 +40,7 @@ int main(int argc, char **argv) {
   if (first_time) {
     DBResult res = create_database(master_pwd);
     handle_database_result(res);
+    printf("Database created\n");
   }
 
   // read the current database
@@ -53,7 +58,7 @@ int main(int argc, char **argv) {
     }
 
     char new_password[PASSWD_MAX_LENGTH]; // final password is > 15 chars
-    PWDResult gen_res = generate_random_password(new_password, 15);
+    PwdResult gen_res = generate_random_password(new_password, 15);
     handle_password_result(gen_res);
 
     sprintf(entries[entry_idx >= 0 ? entry_idx : num_entries++], "%s%s%s",
