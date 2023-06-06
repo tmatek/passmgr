@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "cmdline.h"
 #include "database.h"
+#include "inout.h"
 #include "password.h"
 
 int main(int argc, char **argv) {

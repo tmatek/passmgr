@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.12)
 project(passmgr)
 
 IF (WIN32)
   add_executable(pass main.c ipc-win.c)
 ELSE ()
-  add_executable(pass newmain.c cmdline.c database.c password.c)
+  add_executable(pass newmain.c inout.c database.c password.c)
 ENDIF()
