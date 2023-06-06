@@ -84,6 +84,13 @@ int find_password_entry(Lines entries, int num_entries, char *identifier) {
   return -1;
 }
 
+void password_from_entry(Line password, Line entry) {
+  memcpy(password, entry, sizeof(Line));
+  strtok(password, IDENT_PASSWD_DELIMITER);
+  char *second = strtok(NULL, IDENT_PASSWD_DELIMITER);
+  memcpy(password, second, PASSWD_MAX_LENGTH);
+}
+
 void handle_password_result(PwdResult result) {
   switch (result) {
   case ERR_IDENTIFIER_INVALID:

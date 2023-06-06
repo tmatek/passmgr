@@ -20,6 +20,7 @@ InputArgs parse_command_line(int argc, char **argv) {
     args.command = CMD_LIST_PASSWD;
   } else {
     args.command = CMD_COPY_PASSWD;
+    args.identifier = argv[1];
   }
 
   if (argc > 2) {
