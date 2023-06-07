@@ -20,4 +20,5 @@ PwdResult generate_random_password(char *password, int byte_count);
 PwdResult check_password_identifier(char *identifier);
 int find_password_entry(Lines entries, int num_entries, char *identifier);
 void password_from_entry(Line password, Line entry);
+void entries_to_identifiers(Lines identifiers, Lines entries, int num_entries);
 void handle_password_result(PwdResult result);

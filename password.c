@@ -75,6 +75,16 @@ void password_from_entry(Line password, Line entry) {
   memcpy(password, second, PASSWD_MAX_LENGTH);
 }
 
+void entries_to_identifiers(Lines identifiers, Lines entries, int num_entries) {
+  for (int i = 0; i < num_entries; i++) {
+    Line temp;
+    memcpy(temp, entries[i], sizeof(Line));
+
+    char *identifier = strtok(temp, IDENT_PASSWD_DELIMITER);
+    memcpy(identifiers[i], identifier, sizeof(Line));
+  }
+}
+
 void handle_password_result(PwdResult result) {
   switch (result) {
   case ERR_IDENTIFIER_INVALID:

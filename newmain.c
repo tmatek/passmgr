@@ -97,6 +97,13 @@ int main(int argc, char **argv) {
     copy_password_to_clipboard(entries[entry_idx]);
     break;
   }
+
+  case CMD_LIST_PASSWD: {
+    Lines identifiers;
+    entries_to_identifiers(identifiers, entries, num_entries);
+    print_columns(identifiers, num_entries);
+    break;
+  }
   }
 
   default:;

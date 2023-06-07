@@ -54,6 +54,25 @@ bool clipboard_copy(char *string) {
   return true;
 }
 
+void print_columns(Lines strings, int num_strings) {
+  int col_size = num_strings < 10 ? 1 : num_strings < 20 ? 2 : 3;
+  for (int i = 0; i < num_strings; i++) {
+    if (col_size > 1) {
+      printf("%20s ", strings[i]);
+    } else {
+      printf("%s", strings[i]);
+    }
+
+    if ((i + 1) % col_size == 0) {
+      printf("\n");
+    }
+  }
+
+  if (num_strings % col_size != 0) {
+    printf("\n");
+  }
+}
+
 void print_help() {
   printf("usage: pass <command> [identifier]\n\n");
   printf("where command is one of the following:\n");

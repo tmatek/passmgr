@@ -1,3 +1,4 @@
+#include "common.h"
 #include <stdbool.h>
 
 typedef enum Command {
@@ -17,4 +18,5 @@ typedef struct InputArgs {
 InputArgs parse_command_line(int argc, char **argv);
 bool ask_override_entry();
 bool clipboard_copy(char *string);
+void print_columns(Lines strings, int num_strings);
 void print_help();
