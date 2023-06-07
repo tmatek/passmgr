@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "database.h"
 #include "inout.h"
@@ -85,6 +86,23 @@ int main(int argc, char **argv) {
 
     copy_password_to_clipboard(entries[new_entry_idx]);
     break;
+
+  case CMD_DEL_PASSWD: {
+    // check for existing entry
+    int entry_idx = find_password_entry(entries, num_entries, args.identifier);
+    if (entry_idx < 0) {
+      fprintf(stderr, "No entry found for key \"%s\".\n", args.identifier);
+      return EXIT_SUCCESS;
+    }
+
+    // swap the deleted entry with the last one in the list and reduce number
+    // of entries
+    memcpy(entries[entry_idx], entries[num_entries - 1], sizeof(Line));
+    num_entries--;
+
+    printf("Password removed from database.\n");
+    break;
+  }
 
   case CMD_COPY_PASSWD: {
     // find existing entry
