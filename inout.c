@@ -38,6 +38,22 @@ bool ask_override_entry() {
   return ok == 'Y' || ok == 'y';
 }
 
+bool clipboard_copy(char *string) {
+#ifdef _WIN32
+  FILE *cpy = popen("clip", "w");
+#else
+  FILE *cpy = popen("pbcopy", "w");
+#endif
+
+  if (!cpy) {
+    return false;
+  }
+
+  fprintf(cpy, "%s", string);
+  pclose(cpy);
+  return true;
+}
+
 void print_help() {
   printf("usage: pass <command> [identifier]\n\n");
   printf("where command is one of the following:\n");

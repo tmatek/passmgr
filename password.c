@@ -54,22 +54,6 @@ PwdResult check_password_identifier(char *identifier) {
   return PASSWD_OK;
 }
 
-PwdResult clipboard_copy(char *password) {
-#ifdef _WIN32
-  FILE *cpy = popen("clip", "w");
-#else
-  FILE *cpy = popen("pbcopy", "w");
-#endif
-
-  if (!cpy) {
-    return ERR_CLIPBOARD_COPY;
-  }
-
-  fprintf(cpy, "%s", password);
-  pclose(cpy);
-  return PASSWD_OK;
-}
-
 int find_password_entry(Lines entries, int num_entries, char *identifier) {
   for (int i = 0; i < num_entries; i++) {
     Line temp;
@@ -100,10 +84,6 @@ void handle_password_result(PwdResult result) {
 
   case ERR_PASSWD_GENERATION:
     fprintf(stderr, "Unable to generate a new password.\n");
-    exit(EXIT_FAILURE);
-
-  case ERR_CLIPBOARD_COPY:
-    fprintf(stderr, "Unable to copy password to your clipboard.\n");
     exit(EXIT_FAILURE);
 
   case PASSWD_OK:

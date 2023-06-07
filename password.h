@@ -5,7 +5,6 @@
 typedef enum PwdResult {
   ERR_IDENTIFIER_INVALID,
   ERR_PASSWD_GENERATION,
-  ERR_CLIPBOARD_COPY,
   PASSWD_OK
 } PwdResult;
 
@@ -19,7 +18,6 @@ typedef enum PwdResult {
 void obtain_master_password(char *master_pwd, bool confirm);
 PwdResult generate_random_password(char *password, int byte_count);
 PwdResult check_password_identifier(char *identifier);
-PwdResult clipboard_copy(Line entry);
 int find_password_entry(Lines entries, int num_entries, char *identifier);
 void password_from_entry(Line password, Line entry);
 void handle_password_result(PwdResult result);

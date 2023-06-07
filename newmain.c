@@ -5,6 +5,18 @@
 #include "inout.h"
 #include "password.h"
 
+void copy_password_to_clipboard(Line entry) {
+  Line password;
+  password_from_entry(password, entry);
+
+  if (!clipboard_copy(password)) {
+    fprintf(stderr, "Unable to copy password to your clipboard.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Password copied to clipboard.\n");
+}
+
 int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
 
@@ -71,12 +83,7 @@ int main(int argc, char **argv) {
     sprintf(entries[new_entry_idx], "%s%s%s", args.identifier,
             IDENT_PASSWD_DELIMITER, new_password);
 
-    Line password;
-    password_from_entry(password, entries[new_entry_idx]);
-
-    PwdResult clip_res = clipboard_copy(password);
-    handle_password_result(clip_res);
-    printf("Password copied to clipboard.\n");
+    copy_password_to_clipboard(entries[new_entry_idx]);
     break;
 
   case CMD_COPY_PASSWD: {
@@ -87,12 +94,7 @@ int main(int argc, char **argv) {
       break;
     }
 
-    Line password;
-    password_from_entry(password, entries[entry_idx]);
-
-    PwdResult clip_res = clipboard_copy(password);
-    handle_password_result(clip_res);
-    printf("Password copied to clipboard.\n");
+    copy_password_to_clipboard(entries[entry_idx]);
     break;
   }
   }

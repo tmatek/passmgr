@@ -16,4 +16,5 @@ typedef struct InputArgs {
 
 InputArgs parse_command_line(int argc, char **argv);
 bool ask_override_entry();
+bool clipboard_copy(char *string);
 void print_help();
