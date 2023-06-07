@@ -5,6 +5,9 @@
 
 #include "password.h"
 
+// should not clash with base64 characters
+#define IDENT_PASSWD_DELIMITER "|"
+
 void obtain_master_password(char *master_pwd, bool confirm) {
   char *pass = getpass("Master password: ");
   strcpy(master_pwd, pass);
@@ -83,6 +86,10 @@ void entries_to_identifiers(Lines identifiers, Lines entries, int num_entries) {
     char *identifier = strtok(temp, IDENT_PASSWD_DELIMITER);
     memcpy(identifiers[i], identifier, sizeof(Line));
   }
+}
+
+void create_entry(Line entry, char *identifier, char *password) {
+  sprintf(entry, "%s%s%s", identifier, IDENT_PASSWD_DELIMITER, password);
 }
 
 void handle_password_result(PwdResult result) {

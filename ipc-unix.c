@@ -62,7 +62,7 @@ void run_master_password_daemon(char *db_path) {
     if (start > 0 && now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
       start = 0;
       cache->password_available = false;
-      memset(cache->master_password, 0, MASTER_PWD_MAX_LENGTH);
+      memset(cache->master_password, 0, PASSWD_MAX_LENGTH);
     }
 
     prev_available = cache->password_available;

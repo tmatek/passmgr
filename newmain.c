@@ -4,6 +4,7 @@
 
 #include "database.h"
 #include "inout.h"
+#include "ipc.h"
 #include "password.h"
 
 void copy_password_to_clipboard(Line entry) {
@@ -22,7 +23,6 @@ int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
 
   // handle invalid command-line inputs
-
   if (args.command == CMD_NONE) {
     print_help();
     return EXIT_FAILURE;
@@ -69,6 +69,7 @@ int main(int argc, char **argv) {
   handle_database_result(read_res);
 
   switch (args.command) {
+
   case CMD_ADD_PASSWD: {
     // check for existing entry
     int entry_idx = find_password_entry(entries, num_entries, args.identifier);
@@ -81,9 +82,7 @@ int main(int argc, char **argv) {
     handle_password_result(gen_res);
 
     int new_entry_idx = entry_idx >= 0 ? entry_idx : num_entries++;
-    sprintf(entries[new_entry_idx], "%s%s%s", args.identifier,
-            IDENT_PASSWD_DELIMITER, new_password);
-
+    create_entry(entries[new_entry_idx], args.identifier, new_password);
     copy_password_to_clipboard(entries[new_entry_idx]);
     break;
 

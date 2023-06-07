@@ -8,3 +8,6 @@ typedef char Line[200];
 
 // maximum 1000 lines per database
 typedef Line Lines[1000];
+
+// maximum 50 character passwords
+#define PASSWD_MAX_LENGTH 50
