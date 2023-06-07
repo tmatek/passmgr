@@ -1,23 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "database.h"
 #include "inout.h"
 #include "ipc.h"
 #include "password.h"
 
-void copy_password_to_clipboard(Line entry) {
-  Line password;
-  password_from_entry(password, entry);
-
-  if (!clipboard_copy(password)) {
-    fprintf(stderr, "Unable to copy password to your clipboard.\n");
-    exit(EXIT_FAILURE);
-  }
-
-  printf("Password copied to clipboard.\n");
-}
+void copy_password_to_clipboard(Line entry);
+master_pwd_cache *create_master_pwd_cache();
 
 int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
@@ -51,13 +43,17 @@ int main(int argc, char **argv) {
 
   bool first_time = !database_exists();
 
-  // always ask for master password first
-  char master_pwd[PASSWD_MAX_LENGTH];
-  obtain_master_password(master_pwd, first_time);
+  // prepare master password cache store
+  master_pwd_cache *cache = create_master_pwd_cache(argv[0]);
+
+  // always ask for master password, if not cached
+  if (!cache->password_available) {
+    obtain_master_password(cache->master_password, first_time);
+  }
 
   // create a new database
   if (first_time) {
-    DBResult res = create_database(master_pwd);
+    DBResult res = create_database(cache->master_password);
     handle_database_result(res);
     printf("Database created\n");
   }
@@ -65,7 +61,13 @@ int main(int argc, char **argv) {
   // read the current database
   Lines entries;
   int num_entries;
-  DBResult read_res = read_database(master_pwd, entries, &num_entries);
+  DBResult read_res =
+      read_database(cache->master_password, entries, &num_entries);
+
+  // important: activate the cache expiration timer only at this point, since
+  // master password was not validated previously
+  cache->password_available = read_res == DB_OK;
+
   handle_database_result(read_res);
 
   switch (args.command) {
@@ -128,9 +130,47 @@ int main(int argc, char **argv) {
 
   // finally, save updated database
   if (args.command == CMD_ADD_PASSWD || args.command == CMD_DEL_PASSWD) {
-    DBResult save_res = save_database(master_pwd, entries, num_entries);
+    DBResult save_res =
+        save_database(cache->master_password, entries, num_entries);
     handle_database_result(save_res);
   }
 
   return EXIT_SUCCESS;
+}
+
+void copy_password_to_clipboard(Line entry) {
+  Line password;
+  password_from_entry(password, entry);
+
+  if (!clipboard_copy(password)) {
+    fprintf(stderr, "Unable to copy password to your clipboard.\n");
+    exit(EXIT_FAILURE);
+  }
+
+  printf("Password copied to clipboard.\n");
+}
+
+/**
+ * Setup shared memory and run the daemon if shared memory hasn't been created
+ * yet.
+ */
+master_pwd_cache *create_master_pwd_cache(char *filename) {
+  master_pwd_cache *cache = get_shared_memory(filename);
+  if (!cache) {
+    fprintf(stderr, "Error in process communication.\n");
+    exit(EXIT_FAILURE);
+  }
+
+#ifndef _WIN32
+  if (!cache->daemon_running) {
+    cache->daemon_running = true;
+    pid_t pid = fork();
+    if (pid == 0) {
+      run_master_password_daemon(filename);
+      exit(EXIT_SUCCESS);
+    }
+  }
+#endif
+
+  return cache;
 }

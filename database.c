@@ -24,7 +24,7 @@ bool get_db_path(char *db_path) {
 }
 
 bool database_exists() {
-  char db_path[PATH_MAX];
+  char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
@@ -41,7 +41,7 @@ bool database_exists() {
 }
 
 DBResult create_database(char *master_pwd) {
-  char db_path[PATH_MAX];
+  char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
@@ -49,7 +49,7 @@ DBResult create_database(char *master_pwd) {
   }
 
   // no database, use OpenSSL to create initial database
-  char command[PATH_MAX];
+  char command[FS_MAX_PATH_LENGTH];
   sprintf(command,
           "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s",
           db_path, master_pwd);
@@ -64,14 +64,14 @@ DBResult create_database(char *master_pwd) {
 }
 
 DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
-  char db_path[PATH_MAX];
+  char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
     return ERR_DB_HOME_DIR;
   }
 
-  char command[PATH_MAX];
+  char command[FS_MAX_PATH_LENGTH];
   sprintf(
       command,
       "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -d -in %s -pass pass:%s",
@@ -102,14 +102,14 @@ DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
 }
 
 DBResult save_database(char *master_pwd, Lines lines, int num_lines) {
-  char db_path[PATH_MAX];
+  char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
     return ERR_DB_HOME_DIR;
   }
 
-  char command[PATH_MAX];
+  char command[FS_MAX_PATH_LENGTH];
   sprintf(command,
           "openssl enc -aes-256-cbc -pbkdf2 -iter 100000 -out %s -pass pass:%s",
           db_path, master_pwd);

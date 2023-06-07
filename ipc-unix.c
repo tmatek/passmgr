@@ -32,7 +32,7 @@ master_pwd_cache *get_shared_memory(char *filename) {
  * The master password daemon runs as a standalone process and caches the
  * correctly entered master password for up to a minute, before clearing it.
  */
-void run_master_password_daemon(char *db_path) {
+void run_master_password_daemon(char *filename) {
   pid_t sid = setsid();
   if (sid < 0) {
     exit(EXIT_FAILURE);
@@ -42,7 +42,7 @@ void run_master_password_daemon(char *db_path) {
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  master_pwd_cache *cache = get_shared_memory(db_path);
+  master_pwd_cache *cache = get_shared_memory(filename);
   if (!cache) {
     exit(EXIT_FAILURE);
   }
