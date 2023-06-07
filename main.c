@@ -9,7 +9,6 @@
 #include "password.h"
 
 void copy_password_to_clipboard(Line entry);
-master_pwd_cache *create_master_pwd_cache();
 
 int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
@@ -44,7 +43,11 @@ int main(int argc, char **argv) {
   bool first_time = !database_exists();
 
   // prepare master password cache store
-  master_pwd_cache *cache = create_master_pwd_cache(argv[0]);
+  master_pwd_cache *cache = get_shared_memory(argv[0]);
+  if (!cache) {
+    fprintf(stderr, "Error in process communication.\n");
+    return EXIT_FAILURE;
+  }
 
   // always ask for master password, if not cached
   if (!cache->password_available) {
@@ -63,11 +66,6 @@ int main(int argc, char **argv) {
   int num_entries;
   DBResult read_res =
       read_database(cache->master_password, entries, &num_entries);
-
-  // important: activate the cache expiration timer only at this point, since
-  // master password was not validated previously
-  cache->password_available = read_res == DB_OK;
-
   handle_database_result(read_res);
 
   switch (args.command) {
@@ -135,6 +133,14 @@ int main(int argc, char **argv) {
     handle_database_result(save_res);
   }
 
+  // cache the master password for a while; run a daemon which will bust the
+  // cache after some time
+  if (!cache->password_available) {
+    cache->password_available = true;
+    run_master_password_daemon(cache);
+  }
+
+  detach_shared_memory(cache);
   return EXIT_SUCCESS;
 }
 
@@ -148,29 +154,4 @@ void copy_password_to_clipboard(Line entry) {
   }
 
   printf("Password copied to clipboard.\n");
-}
-
-/**
- * Setup shared memory and run the daemon if shared memory hasn't been created
- * yet.
- */
-master_pwd_cache *create_master_pwd_cache(char *filename) {
-  master_pwd_cache *cache = get_shared_memory(filename);
-  if (!cache) {
-    fprintf(stderr, "Error in process communication.\n");
-    exit(EXIT_FAILURE);
-  }
-
-#ifndef _WIN32
-  if (!cache->daemon_running) {
-    cache->daemon_running = true;
-    pid_t pid = fork();
-    if (pid == 0) {
-      run_master_password_daemon(filename);
-      exit(EXIT_SUCCESS);
-    }
-  }
-#endif
-
-  return cache;
 }

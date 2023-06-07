@@ -1,28 +1,29 @@
 #include "ipc.h"
 #include <stdlib.h>
 #include <string.h>
-#include <sys/ipc.h>
 #include <sys/shm.h>
-#include <time.h>
 #include <unistd.h>
 
+#ifndef NDEBUG
+#define CLEAR_CACHED_MASTER_PWD_INTERVAL 30
+#else
 #define CLEAR_CACHED_MASTER_PWD_INTERVAL 180
-#define IPC_RESULT_ERROR (-1)
+#endif
 
 master_pwd_cache *get_shared_memory(char *filename) {
   key_t key = ftok(filename, 0);
-  if (key == IPC_RESULT_ERROR) {
+  if (key < 0) {
     return NULL;
   }
 
   int shared_block_id = shmget(key, sizeof(master_pwd_cache), 0644 | IPC_CREAT);
-  if (shared_block_id == IPC_RESULT_ERROR) {
+  if (shared_block_id < 0) {
     return NULL;
   }
 
   master_pwd_cache *result = shmat(shared_block_id, NULL, 0);
-  if (result == (void *)-1) {
-    return false;
+  if (result < 0) {
+    return NULL;
   }
 
   return result;
@@ -30,9 +31,16 @@ master_pwd_cache *get_shared_memory(char *filename) {
 
 /*+
  * The master password daemon runs as a standalone process and caches the
- * correctly entered master password for up to a minute, before clearing it.
+ * correctly entered master password for up three minutes, before clearing it.
  */
-void run_master_password_daemon(char *filename) {
+void run_master_password_daemon(master_pwd_cache *cache) {
+  // parent
+  pid_t pid = fork();
+  if (pid > 0) {
+    return;
+  }
+
+  // child from here on
   pid_t sid = setsid();
   if (sid < 0) {
     exit(EXIT_FAILURE);
@@ -42,33 +50,9 @@ void run_master_password_daemon(char *filename) {
   close(STDOUT_FILENO);
   close(STDERR_FILENO);
 
-  master_pwd_cache *cache = get_shared_memory(filename);
-  if (!cache) {
-    exit(EXIT_FAILURE);
-  }
-
-  bool prev_available = cache->password_available;
-  int start = prev_available ? (int)time(NULL) : 0;
-
-  while (true) {
-    sleep(1);
-
-    // password was set? start the timer
-    if (cache->password_available && !prev_available) {
-      start = (int)time(NULL);
-    }
-
-    int now = (int)time(NULL);
-    if (start > 0 && now - start >= CLEAR_CACHED_MASTER_PWD_INTERVAL) {
-      start = 0;
-      cache->password_available = false;
-      memset(cache->master_password, 0, PASSWD_MAX_LENGTH);
-    }
-
-    prev_available = cache->password_available;
-  }
-
-  shmdt(cache);
+  sleep(CLEAR_CACHED_MASTER_PWD_INTERVAL);
+  memset(cache->master_password, 0, PASSWD_MAX_LENGTH);
+  cache->password_available = false;
 }
 
 void detach_shared_memory(master_pwd_cache *cache) { shmdt(cache); }
