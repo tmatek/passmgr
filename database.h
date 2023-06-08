@@ -2,6 +2,7 @@
 
 #include "common.h"
 
+bool get_db_path(char *db_path);
 bool database_exists();
 bool create_database(char *master_pwd);
 bool read_database(char *master_pwd, Lines lines, int *lines_read);

@@ -16,6 +16,7 @@ bool get_db_path(char *db_path) {
 #else
   char *homedir = getenv("HOME");
   if (!homedir) {
+    last_error = ERR_DB_HOME_DIR;
     return false;
   }
 
@@ -47,7 +48,6 @@ bool create_database(char *master_pwd) {
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    last_error = ERR_DB_HOME_DIR;
     return false;
   }
 
@@ -72,7 +72,6 @@ bool read_database(char *master_pwd, Lines lines, int *lines_read) {
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    last_error = ERR_DB_HOME_DIR;
     return false;
   }
 
@@ -113,7 +112,6 @@ bool save_database(char *master_pwd, Lines lines, int num_lines) {
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    last_error = ERR_DB_HOME_DIR;
     return false;
   }
 

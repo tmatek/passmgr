@@ -3,6 +3,7 @@
 #include <sys/shm.h>
 #include <unistd.h>
 
+#include "database.h"
 #include "error.h"
 #include "ipc.h"
 
@@ -12,8 +13,15 @@
 #define CLEAR_CACHED_MASTER_PWD_INTERVAL 180
 #endif
 
-master_pwd_cache *get_shared_memory(char *filename) {
-  key_t key = ftok(filename, 0);
+master_pwd_cache *get_shared_memory() {
+  char db_path[FS_MAX_PATH_LENGTH];
+  bool path_ok = get_db_path(db_path);
+
+  if (!path_ok) {
+    return NULL;
+  }
+
+  key_t key = ftok(db_path, 0);
   if (key < 0) {
     last_error = ERR_SHARED_MEM;
     return NULL;

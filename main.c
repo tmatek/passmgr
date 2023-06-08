@@ -42,26 +42,35 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  char init_master_pwd[PASSWD_MAX_LENGTH];
   bool first_time = !database_exists();
 
+  // create a new database?
+  if (first_time) {
+    obtain_master_password(init_master_pwd, true);
+
+    if (!create_database(init_master_pwd)) {
+      print_error();
+      return EXIT_FAILURE;
+    }
+    printf("Database created\n");
+  }
+
   // prepare master password cache store
-  master_pwd_cache *cache = get_shared_memory(argv[0]);
+  master_pwd_cache *cache = get_shared_memory();
   if (!cache) {
     print_error();
     return EXIT_FAILURE;
   }
 
+  if (first_time) {
+    cache->password_available = true;
+    memcpy(cache->master_password, init_master_pwd, PASSWD_MAX_LENGTH);
+  }
+
   // always ask for master password, if not cached
   if (!cache->password_available) {
     obtain_master_password(cache->master_password, first_time);
-  }
-
-  // create a new database
-  if (first_time) {
-    if (!create_database(cache->master_password)) {
-      exit_with_cleanup(cache);
-    }
-    printf("Database created\n");
   }
 
   // read the current database
