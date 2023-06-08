@@ -1,5 +1,6 @@
-#include "ipc.h"
 #include <stdlib.h>
+
+#include "ipc.h"
 
 master_pwd_cache *get_shared_memory(char *filename) {
   master_pwd_cache *cache =

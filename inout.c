@@ -1,7 +1,9 @@
-#include "inout.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "error.h"
+#include "inout.h"
 
 InputArgs parse_command_line(int argc, char **argv) {
   InputArgs args = {CMD_NONE, NULL};
@@ -46,6 +48,7 @@ bool clipboard_copy(char *string) {
 #endif
 
   if (!cpy) {
+    last_error = ERR_CLIPBOARD_COPY;
     return false;
   }
 

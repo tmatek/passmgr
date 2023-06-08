@@ -1,5 +1,6 @@
-#include "common.h"
 #include <stdbool.h>
+
+#include "common.h"
 
 typedef struct master_pwd_cache {
   bool password_available;

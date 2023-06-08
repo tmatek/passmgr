@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "error.h"
 #include "password.h"
 
 // should not clash with base64 characters
@@ -17,13 +18,14 @@ void obtain_master_password(char *master_pwd, bool confirm) {
     ;
 }
 
-PwdResult generate_random_password(char *password, int byte_count) {
+bool generate_random_password(char *password, int byte_count) {
   char command[50];
   sprintf(command, "openssl rand -base64 %d", byte_count);
 
   FILE *gen = popen(command, "r");
   if (!gen) {
-    return ERR_PASSWD_GENERATION;
+    last_error = ERR_PASSWD_GENERATION;
+    return false;
   }
 
   // read until new line is consumed and then remove the new line
@@ -32,13 +34,14 @@ PwdResult generate_random_password(char *password, int byte_count) {
   pclose(gen);
 
   if (!res) {
-    return ERR_PASSWD_GENERATION;
+    last_error = ERR_PASSWD_GENERATION;
+    return false;
   }
 
-  return PASSWD_OK;
+  return true;
 }
 
-PwdResult check_password_identifier(char *identifier) {
+bool check_password_identifier(char *identifier) {
   for (char *ptr = identifier; *ptr != '\0'; ptr++) {
     if (*ptr >= 48 && *ptr <= 57)
       continue; // digits
@@ -51,10 +54,11 @@ PwdResult check_password_identifier(char *identifier) {
     if (*ptr == 45)
       continue; // dash
 
-    return ERR_IDENTIFIER_INVALID;
+    last_error = ERR_IDENTIFIER_INVALID;
+    return false;
   }
 
-  return PASSWD_OK;
+  return true;
 }
 
 int find_password_entry(Lines entries, int num_entries, char *identifier) {
@@ -90,20 +94,4 @@ void entries_to_identifiers(Lines identifiers, Lines entries, int num_entries) {
 
 void create_entry(Line entry, char *identifier, char *password) {
   sprintf(entry, "%s%s%s", identifier, IDENT_PASSWD_DELIMITER, password);
-}
-
-void handle_password_result(PwdResult result) {
-  switch (result) {
-  case ERR_IDENTIFIER_INVALID:
-    fprintf(stderr, "Identifier can only be alphanumeric, with underscore "
-                    "and/or a dash.\n");
-    exit(EXIT_FAILURE);
-
-  case ERR_PASSWD_GENERATION:
-    fprintf(stderr, "Unable to generate a new password.\n");
-    exit(EXIT_FAILURE);
-
-  case PASSWD_OK:
-    return;
-  }
 }

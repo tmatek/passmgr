@@ -1,8 +1,10 @@
-#include "ipc.h"
 #include <stdlib.h>
 #include <string.h>
 #include <sys/shm.h>
 #include <unistd.h>
+
+#include "error.h"
+#include "ipc.h"
 
 #ifndef NDEBUG
 #define CLEAR_CACHED_MASTER_PWD_INTERVAL 30
@@ -13,16 +15,19 @@
 master_pwd_cache *get_shared_memory(char *filename) {
   key_t key = ftok(filename, 0);
   if (key < 0) {
+    last_error = ERR_SHARED_MEM;
     return NULL;
   }
 
   int shared_block_id = shmget(key, sizeof(master_pwd_cache), 0644 | IPC_CREAT);
   if (shared_block_id < 0) {
+    last_error = ERR_SHARED_MEM;
     return NULL;
   }
 
   master_pwd_cache *result = shmat(shared_block_id, NULL, 0);
   if (result < 0) {
+    last_error = ERR_SHARED_MEM;
     return NULL;
   }
 

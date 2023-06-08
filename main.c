@@ -4,11 +4,13 @@
 #include <unistd.h>
 
 #include "database.h"
+#include "error.h"
 #include "inout.h"
 #include "ipc.h"
 #include "password.h"
 
-void copy_password_to_clipboard(Line entry);
+void exit_with_cleanup(master_pwd_cache *cache);
+bool copy_password_to_clipboard(Line entry);
 
 int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
@@ -35,9 +37,9 @@ int main(int argc, char **argv) {
   }
 
   // check if identifier is in correct format
-  if (args.identifier) {
-    PwdResult check_res = check_password_identifier(args.identifier);
-    handle_password_result(check_res);
+  if (args.identifier && !check_password_identifier(args.identifier)) {
+    print_error();
+    return EXIT_FAILURE;
   }
 
   bool first_time = !database_exists();
@@ -45,7 +47,7 @@ int main(int argc, char **argv) {
   // prepare master password cache store
   master_pwd_cache *cache = get_shared_memory(argv[0]);
   if (!cache) {
-    fprintf(stderr, "Error in process communication.\n");
+    print_error();
     return EXIT_FAILURE;
   }
 
@@ -56,17 +58,18 @@ int main(int argc, char **argv) {
 
   // create a new database
   if (first_time) {
-    DBResult res = create_database(cache->master_password);
-    handle_database_result(res);
+    if (!create_database(cache->master_password)) {
+      exit_with_cleanup(cache);
+    }
     printf("Database created\n");
   }
 
   // read the current database
   Lines entries;
   int num_entries;
-  DBResult read_res =
-      read_database(cache->master_password, entries, &num_entries);
-  handle_database_result(read_res);
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    exit_with_cleanup(cache);
+  }
 
   switch (args.command) {
 
@@ -74,24 +77,28 @@ int main(int argc, char **argv) {
     // check for existing entry
     int entry_idx = find_password_entry(entries, num_entries, args.identifier);
     if (entry_idx >= 0 && !ask_override_entry()) {
-      return EXIT_SUCCESS;
+      break;
     }
 
     char new_password[PASSWD_MAX_LENGTH]; // final password is > 15 chars
-    PwdResult gen_res = generate_random_password(new_password, 15);
-    handle_password_result(gen_res);
+    if (!generate_random_password(new_password, 15)) {
+      exit_with_cleanup(cache);
+    }
 
     int new_entry_idx = entry_idx >= 0 ? entry_idx : num_entries++;
     create_entry(entries[new_entry_idx], args.identifier, new_password);
-    copy_password_to_clipboard(entries[new_entry_idx]);
+
+    if (!copy_password_to_clipboard(entries[new_entry_idx])) {
+      exit_with_cleanup(cache);
+    };
     break;
 
   case CMD_DEL_PASSWD: {
     // check for existing entry
     int entry_idx = find_password_entry(entries, num_entries, args.identifier);
     if (entry_idx < 0) {
-      fprintf(stderr, "No entry found for key \"%s\".\n", args.identifier);
-      return EXIT_SUCCESS;
+      printf("No entry found for key \"%s\".\n", args.identifier);
+      break;
     }
 
     // swap the deleted entry with the last one in the list and reduce number
@@ -107,11 +114,13 @@ int main(int argc, char **argv) {
     // find existing entry
     int entry_idx = find_password_entry(entries, num_entries, args.identifier);
     if (entry_idx < 0) {
-      fprintf(stderr, "No entry found for key \"%s\".\n", args.identifier);
+      printf("No entry found for key \"%s\".\n", args.identifier);
       break;
     }
 
-    copy_password_to_clipboard(entries[entry_idx]);
+    if (!copy_password_to_clipboard(entries[entry_idx])) {
+      exit_with_cleanup(cache);
+    };
     break;
   }
 
@@ -128,9 +137,9 @@ int main(int argc, char **argv) {
 
   // finally, save updated database
   if (args.command == CMD_ADD_PASSWD || args.command == CMD_DEL_PASSWD) {
-    DBResult save_res =
-        save_database(cache->master_password, entries, num_entries);
-    handle_database_result(save_res);
+    if (!save_database(cache->master_password, entries, num_entries)) {
+      exit_with_cleanup(cache);
+    }
   }
 
   // cache the master password for a while; run a daemon which will bust the
@@ -144,14 +153,20 @@ int main(int argc, char **argv) {
   return EXIT_SUCCESS;
 }
 
-void copy_password_to_clipboard(Line entry) {
+void exit_with_cleanup(master_pwd_cache *cache) {
+  print_error();
+  detach_shared_memory(cache);
+  exit(EXIT_FAILURE);
+}
+
+bool copy_password_to_clipboard(Line entry) {
   Line password;
   password_from_entry(password, entry);
 
   if (!clipboard_copy(password)) {
-    fprintf(stderr, "Unable to copy password to your clipboard.\n");
-    exit(EXIT_FAILURE);
+    return false;
   }
 
   printf("Password copied to clipboard.\n");
+  return true;
 }

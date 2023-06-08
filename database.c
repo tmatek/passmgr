@@ -1,8 +1,10 @@
-#include "database.h"
 #include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "database.h"
+#include "error.h"
 
 /**
  * Sets users home directory for release builds and the current working
@@ -40,12 +42,13 @@ bool database_exists() {
   return true;
 }
 
-DBResult create_database(char *master_pwd) {
+bool create_database(char *master_pwd) {
   char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    return ERR_DB_HOME_DIR;
+    last_error = ERR_DB_HOME_DIR;
+    return false;
   }
 
   // no database, use OpenSSL to create initial database
@@ -56,19 +59,21 @@ DBResult create_database(char *master_pwd) {
 
   FILE *db = popen(command, "w");
   if (!db) {
-    return ERR_DB_OPEN_FAILED;
+    last_error = ERR_DB_OPEN_FAILED;
+    return false;
   }
 
   pclose(db);
-  return DB_OK;
+  return true;
 }
 
-DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
+bool read_database(char *master_pwd, Lines lines, int *lines_read) {
   char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    return ERR_DB_HOME_DIR;
+    last_error = ERR_DB_HOME_DIR;
+    return false;
   }
 
   char command[FS_MAX_PATH_LENGTH];
@@ -79,7 +84,8 @@ DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
 
   FILE *db = popen(command, "r");
   if (!db) {
-    return ERR_DB_OPEN_FAILED;
+    last_error = ERR_DB_OPEN_FAILED;
+    return false;
   }
 
   Line line;
@@ -95,18 +101,20 @@ DBResult read_database(char *master_pwd, Lines lines, int *lines_read) {
   // master password checks out?
   int res = pclose(db);
   if (res > 0) {
-    return ERR_DB_MASTER_PWD;
+    last_error = ERR_DB_MASTER_PWD;
+    return false;
   }
 
-  return DB_OK;
+  return true;
 }
 
-DBResult save_database(char *master_pwd, Lines lines, int num_lines) {
+bool save_database(char *master_pwd, Lines lines, int num_lines) {
   char db_path[FS_MAX_PATH_LENGTH];
   bool path_ok = get_db_path(db_path);
 
   if (!path_ok) {
-    return ERR_DB_HOME_DIR;
+    last_error = ERR_DB_HOME_DIR;
+    return false;
   }
 
   char command[FS_MAX_PATH_LENGTH];
@@ -116,7 +124,8 @@ DBResult save_database(char *master_pwd, Lines lines, int num_lines) {
 
   FILE *db = popen(command, "w");
   if (!db) {
-    return ERR_DB_OPEN_FAILED;
+    last_error = ERR_DB_OPEN_FAILED;
+    return false;
   }
 
   for (int i = 0; i < num_lines; i++) {
@@ -124,24 +133,5 @@ DBResult save_database(char *master_pwd, Lines lines, int num_lines) {
   }
 
   pclose(db);
-  return DB_OK;
-}
-
-void handle_database_result(DBResult result) {
-  switch (result) {
-  case ERR_DB_HOME_DIR:
-    fprintf(stderr, "Unable to access your home directory.\n");
-    exit(EXIT_FAILURE);
-
-  case ERR_DB_OPEN_FAILED:
-    fprintf(stderr, "Unable to open database file.\n");
-    exit(EXIT_FAILURE);
-
-  case ERR_DB_MASTER_PWD:
-    fprintf(stderr, "Unable to decrypt database file.\n");
-    exit(EXIT_FAILURE);
-
-  case DB_OK:
-    return;
-  }
+  return true;
 }

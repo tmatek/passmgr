@@ -1,5 +1,6 @@
-#include "common.h"
 #include <stdbool.h>
+
+#include "common.h"
 
 typedef enum Command {
   CMD_ADD_PASSWD,
