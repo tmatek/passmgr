@@ -64,13 +64,12 @@ int main(int argc, char **argv) {
   }
 
   if (first_time) {
-    cache->password_available = true;
     memcpy(cache->master_password, init_master_pwd, PASSWD_MAX_LENGTH);
   }
 
   // always ask for master password, if not cached
-  if (!cache->password_available) {
-    obtain_master_password(cache->master_password, first_time);
+  if (!first_time && !cache->password_available) {
+    obtain_master_password(cache->master_password, false);
   }
 
   // read the current database
