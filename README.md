@@ -13,7 +13,7 @@ To build the executable, run:
 ```
 $ mkdir build
 $ cd build
-$ cmake ..
+$ cmake -DCMAKE_BUILD_TYPE=Release ..
 $ make
 ```
 
