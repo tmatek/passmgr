@@ -9,8 +9,12 @@
 #include "ipc.h"
 #include "password.h"
 
-void exit_with_cleanup(master_pwd_cache *cache);
-bool copy_password_to_clipboard(Line entry);
+void ensure_initial_database(master_pwd_cache *cache);
+void ensure_master_password(master_pwd_cache *cache);
+void add_new_password(master_pwd_cache *cache, char *identifier);
+void delete_password(master_pwd_cache *cache, char *identifier);
+void retrieve_password(master_pwd_cache *cache, char *identifier);
+void list_passwords(master_pwd_cache *cache);
 
 int main(int argc, char **argv) {
   InputArgs args = parse_command_line(argc, argv);
@@ -42,20 +46,6 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  char init_master_pwd[PASSWD_MAX_LENGTH];
-  bool first_time = !database_exists();
-
-  // create a new database?
-  if (first_time) {
-    obtain_master_password(init_master_pwd, true);
-
-    if (!create_database(init_master_pwd)) {
-      print_error();
-      return EXIT_FAILURE;
-    }
-    printf("Database created\n");
-  }
-
   // prepare master password cache store
   master_pwd_cache *cache = get_shared_memory();
   if (!cache) {
@@ -63,91 +53,27 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
-  if (first_time) {
-    memcpy(cache->master_password, init_master_pwd, PASSWD_MAX_LENGTH);
-  }
-
-  // always ask for master password, if not cached
-  if (!first_time && !cache->password_available) {
-    obtain_master_password(cache->master_password, false);
-  }
-
-  // read the current database
-  Lines entries;
-  int num_entries;
-  if (!read_database(cache->master_password, entries, &num_entries)) {
-    exit_with_cleanup(cache);
-  }
+  ensure_initial_database(cache);
+  ensure_master_password(cache);
 
   switch (args.command) {
-
-  case CMD_ADD_PASSWD: {
-    // check for existing entry
-    int entry_idx = find_password_entry(entries, num_entries, args.identifier);
-    if (entry_idx >= 0 && !ask_override_entry()) {
-      break;
-    }
-
-    char new_password[PASSWD_MAX_LENGTH]; // final password is > 15 chars
-    if (!generate_random_password(new_password, 15)) {
-      exit_with_cleanup(cache);
-    }
-
-    int new_entry_idx = entry_idx >= 0 ? entry_idx : num_entries++;
-    create_entry(entries[new_entry_idx], args.identifier, new_password);
-
-    if (!copy_password_to_clipboard(entries[new_entry_idx])) {
-      exit_with_cleanup(cache);
-    };
+  case CMD_ADD_PASSWD:
+    add_new_password(cache, args.identifier);
     break;
 
-  case CMD_DEL_PASSWD: {
-    // check for existing entry
-    int entry_idx = find_password_entry(entries, num_entries, args.identifier);
-    if (entry_idx < 0) {
-      printf("No entry found for key \"%s\".\n", args.identifier);
-      break;
-    }
-
-    // swap the deleted entry with the last one in the list and reduce number
-    // of entries
-    memcpy(entries[entry_idx], entries[num_entries - 1], sizeof(Line));
-    num_entries--;
-
-    printf("Password removed from database.\n");
+  case CMD_DEL_PASSWD:
+    delete_password(cache, args.identifier);
     break;
-  }
 
-  case CMD_COPY_PASSWD: {
-    // find existing entry
-    int entry_idx = find_password_entry(entries, num_entries, args.identifier);
-    if (entry_idx < 0) {
-      printf("No entry found for key \"%s\".\n", args.identifier);
-      break;
-    }
-
-    if (!copy_password_to_clipboard(entries[entry_idx])) {
-      exit_with_cleanup(cache);
-    };
+  case CMD_COPY_PASSWD:
+    retrieve_password(cache, args.identifier);
     break;
-  }
 
-  case CMD_LIST_PASSWD: {
-    Lines identifiers;
-    entries_to_identifiers(identifiers, entries, num_entries);
-    print_columns(identifiers, num_entries);
+  case CMD_LIST_PASSWD:
+    list_passwords(cache);
     break;
-  }
-  }
 
-  default:;
-  }
-
-  // finally, save updated database
-  if (args.command == CMD_ADD_PASSWD || args.command == CMD_DEL_PASSWD) {
-    if (!save_database(cache->master_password, entries, num_entries)) {
-      exit_with_cleanup(cache);
-    }
+  default: {}
   }
 
   // cache the master password for a while; run a daemon which will bust the
@@ -167,6 +93,30 @@ void exit_with_cleanup(master_pwd_cache *cache) {
   exit(EXIT_FAILURE);
 }
 
+void ensure_initial_database(master_pwd_cache *cache) {
+  if (database_exists()) {
+    return;
+  }
+
+  char init_master_pwd[PASSWD_MAX_LENGTH];
+  obtain_master_password(init_master_pwd, true);
+
+  if (!create_database(init_master_pwd)) {
+    exit_with_cleanup(cache);
+  }
+  printf("Database created\n");
+
+  // copy initial password to cache
+  memcpy(cache->master_password, init_master_pwd, PASSWD_MAX_LENGTH);
+  memset(init_master_pwd, 0, PASSWD_MAX_LENGTH);
+}
+
+void ensure_master_password(master_pwd_cache *cache) {
+  if (!cache->password_available) {
+    obtain_master_password(cache->master_password, false);
+  }
+}
+
 bool copy_password_to_clipboard(Line entry) {
   Line password;
   password_from_entry(password, entry);
@@ -177,4 +127,97 @@ bool copy_password_to_clipboard(Line entry) {
 
   printf("Password copied to clipboard.\n");
   return true;
+}
+
+void add_new_password(master_pwd_cache *cache, char *identifier) {
+  Lines entries;
+  int num_entries;
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  // check for existing entry and ask to override it
+  int entry_idx = find_password_entry(entries, num_entries, identifier);
+  bool entry_found = entry_idx >= 0;
+
+  if (entry_found && !ask_override_entry()) {
+    // can't do much if user does not confirm
+    return;
+  }
+
+  char new_password[PASSWD_MAX_LENGTH]; // final password is > 15 chars
+  if (!generate_random_password(new_password, 15)) {
+    exit_with_cleanup(cache);
+  }
+
+  int new_entry_idx = entry_idx >= 0 ? entry_idx : num_entries++;
+  create_entry(entries[new_entry_idx], identifier, new_password);
+
+  // save updated database
+  if (!save_database(cache->master_password, entries, num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  // copy new password to clipboard
+  if (!copy_password_to_clipboard(entries[new_entry_idx])) {
+    exit_with_cleanup(cache);
+  };
+}
+
+void delete_password(master_pwd_cache *cache, char *identifier) {
+  Lines entries;
+  int num_entries;
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  // check for existing entry
+  int entry_idx = find_password_entry(entries, num_entries, identifier);
+  if (entry_idx < 0) {
+    printf("No entry found for key \"%s\".\n", identifier);
+    return;
+  }
+
+  // swap the deleted entry with the last one in the list and reduce number
+  // of entries
+  memcpy(entries[entry_idx], entries[num_entries - 1], sizeof(Line));
+  num_entries--;
+
+  // save updated database
+  if (!save_database(cache->master_password, entries, num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  printf("Password removed from database.\n");
+}
+
+void retrieve_password(master_pwd_cache *cache, char *identifier) {
+  Lines entries;
+  int num_entries;
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  // find existing entry
+  int entry_idx = find_password_entry(entries, num_entries, identifier);
+  if (entry_idx < 0) {
+    printf("No entry found for key \"%s\".\n", identifier);
+    return;
+  }
+
+  if (!copy_password_to_clipboard(entries[entry_idx])) {
+    exit_with_cleanup(cache);
+  };
+}
+
+void list_passwords(master_pwd_cache *cache) {
+  Lines entries;
+  int num_entries;
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    exit_with_cleanup(cache);
+  }
+
+  Lines identifiers;
+  entries_to_identifiers(identifiers, entries, num_entries);
+  print_columns(identifiers, num_entries);
 }
