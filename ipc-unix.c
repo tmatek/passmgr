@@ -56,6 +56,7 @@ void run_master_password_daemon(master_pwd_cache *cache) {
   // child from here on
   pid_t sid = setsid();
   if (sid < 0) {
+    detach_shared_memory(cache);
     exit(EXIT_FAILURE);
   }
 
@@ -66,6 +67,9 @@ void run_master_password_daemon(master_pwd_cache *cache) {
   sleep(CLEAR_CACHED_MASTER_PWD_INTERVAL);
   memset(cache->master_password, 0, PASSWD_MAX_LENGTH);
   cache->password_available = false;
+
+  detach_shared_memory(cache);
+  exit(EXIT_SUCCESS);
 }
 
 void detach_shared_memory(master_pwd_cache *cache) { shmdt(cache); }
