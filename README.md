@@ -10,11 +10,11 @@ automatically copied to clipboard.
 
 To build the executable, run:
 
-```
-$ mkdir build
-$ cd build
-$ cmake -DCMAKE_BUILD_TYPE=Release ..
-$ make
+```sh
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
 ```
 
 Run `./pass` afterwards to see the help text.
