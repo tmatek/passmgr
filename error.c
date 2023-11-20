@@ -39,5 +39,10 @@ void print_error() {
     fprintf(stderr, "Invalid version of OpenSSL detected. Please use at least "
                     "version 3.0.\n");
     break;
+
+  case ERR_PASSWD_INVALID:
+    fprintf(stderr, "Provided secret is invalid. It may not contain reserved "
+                    "pipe character '|'.\n");
+    break;
   }
 }

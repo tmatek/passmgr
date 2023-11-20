@@ -3,6 +3,7 @@
 #include "common.h"
 
 void obtain_master_password(char *master_pwd, bool confirm);
+bool obtain_user_password(char *password);
 bool generate_random_password(char *password, int byte_count);
 bool check_password_identifier(char *identifier);
 int find_password_entry(Lines entries, int num_entries, char *identifier);

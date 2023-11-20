@@ -12,6 +12,7 @@
 master_pwd_cache *create_initial_database();
 master_pwd_cache *ensure_master_password();
 void add_new_password(master_pwd_cache *cache, char *identifier);
+void set_user_provided_password(master_pwd_cache *cache, char *identifier);
 void delete_password(master_pwd_cache *cache, char *identifier);
 void retrieve_password(master_pwd_cache *cache, char *identifier);
 void list_passwords(master_pwd_cache *cache);
@@ -31,6 +32,11 @@ int main(int argc, char **argv) {
   }
 
   if (args.command == CMD_COPY_PASSWD && !args.identifier) {
+    print_help();
+    return EXIT_FAILURE;
+  }
+
+  if (args.command == CMD_PUT_PASSWD && !args.identifier) {
     print_help();
     return EXIT_FAILURE;
   }
@@ -64,6 +70,10 @@ int main(int argc, char **argv) {
   switch (args.command) {
   case CMD_ADD_PASSWD:
     add_new_password(cache, args.identifier);
+    break;
+
+  case CMD_PUT_PASSWD:
+    set_user_provided_password(cache, args.identifier);
     break;
 
   case CMD_DEL_PASSWD:
@@ -174,6 +184,36 @@ void add_new_password(master_pwd_cache *cache, char *identifier) {
   }
 
   copy_password_to_clipboard(entries[new_entry_idx]);
+}
+
+void set_user_provided_password(master_pwd_cache *cache, char *identifier) {
+  Lines entries;
+  int num_entries;
+  if (!read_database(cache->master_password, entries, &num_entries)) {
+    return;
+  }
+
+  // check for existing entry and ask to override it
+  int entry_idx = find_password_entry(entries, num_entries, identifier);
+  bool entry_found = entry_idx >= 0;
+
+  if (entry_found && !ask_override_entry()) {
+    // can't do much if user does not confirm
+    return;
+  }
+
+  char new_password[PASSWD_MAX_LENGTH];
+  if (!obtain_user_password(new_password)) {
+    return;
+  }
+
+  int new_entry_idx = entry_idx >= 0 ? entry_idx : num_entries++;
+  create_entry(entries[new_entry_idx], identifier, new_password);
+
+  // save updated database
+  if (!save_database(cache->master_password, entries, num_entries)) {
+    return;
+  }
 }
 
 void delete_password(master_pwd_cache *cache, char *identifier) {

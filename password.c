@@ -6,7 +6,7 @@
 #include "error.h"
 #include "password.h"
 
-// should not clash with base64 characters
+// should not clash with base64 characters or user provided passwords
 #define IDENT_PASSWD_DELIMITER "|"
 
 void obtain_master_password(char *master_pwd, bool confirm) {
@@ -16,6 +16,23 @@ void obtain_master_password(char *master_pwd, bool confirm) {
   // wait for matching password
   while (confirm && strcmp(master_pwd, getpass("Repeat password: ")) != 0)
     ;
+}
+
+bool obtain_user_password(char *password) {
+  // ensure user provided password does not clash with delimiter
+  char *pass = getpass("Secret: ");
+  strcpy(password, pass);
+
+  if (strstr(password, IDENT_PASSWD_DELIMITER) != NULL) {
+    last_error = ERR_PASSWD_INVALID;
+    return false;
+  }
+
+  // wait for matching password
+  while (strcmp(password, getpass("Repeat secret: ")) != 0)
+    ;
+
+  return true;
 }
 
 bool generate_random_password(char *password, int byte_count) {

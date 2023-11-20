@@ -7,6 +7,7 @@ typedef enum PassError {
   ERR_PASSWD_GENERATION,
   ERR_SHARED_MEM,
   ERR_OPENSSL_INVALID,
+  ERR_PASSWD_INVALID,
 } PassError;
 
 extern PassError last_error;

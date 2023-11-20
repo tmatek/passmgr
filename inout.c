@@ -80,11 +80,11 @@ void print_help() {
   printf("usage: pass <command> [identifier]\n\n");
   printf("where command is one of the following:\n");
   printf("%8s\t%s\n", "add",
-         "Creates a new password entry in the database with identifier");
+         "Create a new, random password entry in the database with identifier");
   printf("%8s\t%s\n", "del", "Remove an existing entry from the database");
+  printf("%8s\t%s\n", "put",
+         "Store your own password entry under the identifier");
   printf("%8s\t%s\n", "list", "List all entries in the database");
-  /* printf("%8s\t%s\n", "put",
-         "Stores your own password entry under the identifier"); */
   printf("\n");
   printf("If no command is given, the password associated with identifier will "
          "be copied to your clipboard.\n");
