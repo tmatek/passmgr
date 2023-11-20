@@ -46,6 +46,12 @@ int main(int argc, char **argv) {
     return EXIT_FAILURE;
   }
 
+  // check for requirements - OpenSSL > 3
+  if (!openssl_valid()) {
+    print_error();
+    return EXIT_FAILURE;
+  }
+
   // initialization
   master_pwd_cache *cache =
       database_exists() ? ensure_master_password() : create_initial_database();

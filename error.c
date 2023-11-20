@@ -34,5 +34,10 @@ void print_error() {
   case ERR_SHARED_MEM:
     fprintf(stderr, "Error allocating shared memory.\n");
     break;
+
+  case ERR_OPENSSL_INVALID:
+    fprintf(stderr, "Invalid version of OpenSSL detected. Please use at least "
+                    "version 3.0.\n");
+    break;
   }
 }

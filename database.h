@@ -2,6 +2,7 @@
 
 #include "common.h"
 
+bool openssl_valid();
 bool get_db_path(char *db_path);
 bool database_exists();
 bool create_database(char *master_pwd);

@@ -5,7 +5,8 @@ typedef enum PassError {
   ERR_DB_MASTER_PWD,
   ERR_IDENTIFIER_INVALID,
   ERR_PASSWD_GENERATION,
-  ERR_SHARED_MEM
+  ERR_SHARED_MEM,
+  ERR_OPENSSL_INVALID,
 } PassError;
 
 extern PassError last_error;

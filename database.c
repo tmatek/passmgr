@@ -6,6 +6,27 @@
 #include "database.h"
 #include "error.h"
 
+bool openssl_valid() {
+  FILE *result = popen("openssl version", "r");
+  if (!result) {
+    last_error = ERR_OPENSSL_INVALID;
+    return false;
+  }
+
+  char version[20] = {'0'};
+  fgets(version, 20, result);
+  pclose(result);
+
+  // OpenSSL x.y.z
+  //         ^
+  if ((version[8] - '0') < 3) {
+    last_error = ERR_OPENSSL_INVALID;
+    return false;
+  }
+
+  return true;
+}
+
 /**
  * Sets users home directory for release builds and the current working
  * directory for debug builds.
