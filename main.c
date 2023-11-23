@@ -230,10 +230,12 @@ void delete_password(master_pwd_cache *cache, char *identifier) {
     return;
   }
 
-  // swap the deleted entry with the last one in the list and reduce number
-  // of entries
-  memcpy(entries[entry_idx], entries[num_entries - 1], sizeof(Line));
   num_entries--;
+
+  // shift back all entries by one, removing the found entry
+  for (int i = entry_idx; i < num_entries; i++) {
+    memcpy(entries[i], entries[i + 1], sizeof(Line));
+  }
 
   // save updated database
   if (save_database(cache->master_password, entries, num_entries)) {
