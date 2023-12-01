@@ -3,11 +3,55 @@
 #include <string.h>
 #include <unistd.h>
 
+#ifdef _WIN32
+#include <conio.h>
+#include <windows.h>
+#endif
+
 #include "error.h"
 #include "password.h"
 
 // should not clash with base64 characters or user provided passwords
 #define IDENT_PASSWD_DELIMITER "|"
+
+#ifdef _WIN32
+char *getpass(const char *prompt) {
+  printf(prompt);
+
+  static char password[PASSWD_MAX_LENGTH];
+  memset(password, '\0', sizeof(password));
+
+  int count = 0;
+  char in;
+  while ((in = _getch()) != '\r' && in != EOF) {
+    // Ctrl-C
+    if (in == '\x3') {
+      GenerateConsoleCtrlEvent(CTRL_C_EVENT, 0);
+    }
+
+    // Backspace
+    if (in == '\b' && count > 0) {
+      printf("\b \b");
+      count--;
+    }
+
+    if (in != '\b') {
+      printf("*");
+      password[count++] = in;
+    }
+
+    if (count >= PASSWD_MAX_LENGTH - 1) {
+      // cannot store any more, stop here
+      break;
+    }
+  }
+
+  password[count++] = '\0';
+  printf("\n");
+
+  return password;
+}
+#endif
 
 void obtain_master_password(char *master_pwd, bool confirm) {
   char *pass = getpass("Master password: ");

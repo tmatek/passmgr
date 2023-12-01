@@ -17,4 +17,11 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 ```
 
+For Windows builds use MinGW:
+
+```sh
+cmake -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release ..
+mingw32-make
+```
+
 Run `./pass` afterwards to see the help text.

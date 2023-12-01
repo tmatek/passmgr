@@ -6,6 +6,12 @@
 #include "database.h"
 #include "error.h"
 
+#ifdef _WIN32
+#define ENV_HOME "HOMEPATH"
+#else
+#define ENV_HOME "HOME"
+#endif
+
 bool openssl_valid() {
   FILE *result = popen("openssl version", "r");
   if (!result) {
@@ -35,7 +41,7 @@ bool get_db_path(char *db_path) {
 #ifndef NDEBUG
   sprintf(db_path, "./passdb");
 #else
-  char *homedir = getenv("HOME");
+  char *homedir = getenv(ENV_HOME);
   if (!homedir) {
     last_error = ERR_DB_HOME_DIR;
     return false;
