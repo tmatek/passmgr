@@ -5,6 +5,7 @@
 
 #include "database.h"
 #include "error.h"
+#include "inout.h"
 #include "ipc.h"
 
 #ifndef NDEBUG
@@ -12,6 +13,8 @@
 #else
 #define CLEAR_CACHED_MASTER_PWD_INTERVAL 180
 #endif
+
+#define CLEAR_CLIPBOARD_AFTER_SECONDS 30
 
 master_pwd_cache *get_shared_memory() {
   char db_path[FS_MAX_PATH_LENGTH];
@@ -70,6 +73,32 @@ void run_master_password_daemon(master_pwd_cache *cache) {
 
   detach_shared_memory(cache);
   exit(EXIT_SUCCESS);
+}
+
+/**
+ * The clipboard cleaner daemon runs as a standalone process and clears the
+ * copied password from the clipboard after short time.
+ */
+void run_clipboard_cleaner_daemon() {
+  // parent
+  pid_t pid = fork();
+  if (pid > 0) {
+    return;
+  }
+
+  // child from here on
+  pid_t sid = setsid();
+  if (sid < 0) {
+    exit(EXIT_FAILURE);
+  }
+
+  sleep(CLEAR_CLIPBOARD_AFTER_SECONDS);
+
+  if (clipboard_clear()) {
+    exit(EXIT_SUCCESS);
+  }
+
+  exit(EXIT_FAILURE);
 }
 
 void detach_shared_memory(master_pwd_cache *cache) { shmdt(cache); }

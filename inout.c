@@ -57,6 +57,22 @@ bool clipboard_copy(char *string) {
   return true;
 }
 
+bool clipboard_clear() {
+#ifdef _WIN32
+  FILE *clear = popen("type nul | clip", "r");
+#else
+  FILE *clear = popen("pbcopy < /dev/null", "r");
+#endif
+
+  if (!clear) {
+    last_error = ERR_CLIPBOARD_COPY;
+    return false;
+  }
+
+  pclose(clear);
+  return true;
+}
+
 void print_columns(Lines strings, int num_strings) {
   int col_size = num_strings < 10 ? 1 : num_strings < 20 ? 2 : 3;
   for (int i = 0; i < num_strings; i++) {

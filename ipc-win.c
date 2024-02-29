@@ -12,4 +12,6 @@ master_pwd_cache *get_shared_memory() {
 
 void run_master_password_daemon(master_pwd_cache *cache) { return; }
 
+void run_clipboard_cleaner_daemon() { return; }
+
 void detach_shared_memory(master_pwd_cache *cache) { free(cache); }
