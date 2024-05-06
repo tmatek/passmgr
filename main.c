@@ -82,7 +82,6 @@ int main(int argc, char **argv) {
 
   case CMD_COPY_PASSWD:
     retrieve_password(cache, args.identifier);
-    run_clipboard_cleaner_daemon();
     break;
 
   case CMD_LIST_PASSWD:
@@ -151,7 +150,7 @@ void copy_password_to_clipboard(Line entry) {
   password_from_entry(password, entry);
 
   if (clipboard_copy(password)) {
-    printf("Password copied to clipboard for 30 seconds.\n");
+    printf("Password copied to clipboard.\n");
   }
 }
 

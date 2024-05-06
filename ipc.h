@@ -9,5 +9,4 @@ typedef struct master_pwd_cache {
 
 master_pwd_cache *get_shared_memory();
 void run_master_password_daemon(master_pwd_cache *cache);
-void run_clipboard_cleaner_daemon();
 void detach_shared_memory(master_pwd_cache *cache);
